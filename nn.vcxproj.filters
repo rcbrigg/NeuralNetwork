@@ -1,0 +1,45 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="include">
+      <UniqueIdentifier>{3713f8cf-5d05-455e-9a63-dbe9c4bb9720}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src">
+      <UniqueIdentifier>{4e7b9fcb-64e2-4c93-ab28-1f025e3915c3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\layers">
+      <UniqueIdentifier>{68c6658c-ff21-498f-b615-7fb55e3464d4}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="include\dimension.hpp">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="src\network_data.hpp">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="include\tensor.hpp">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="include\shape.hpp">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="src\host_impl.hpp">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="include\network.hpp">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="src\layers\layer.hpp">
+      <Filter>src\layers</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="src\network.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\host_impl.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+  </ItemGroup>
+</Project>
