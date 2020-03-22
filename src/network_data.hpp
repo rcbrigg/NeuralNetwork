@@ -1,36 +1,33 @@
 #pragma once
 #include <stdint.h>
-#include "..\include\tensor.hpp"
-#include "..\include\shape.hpp"
+#include "tensor.hpp"
+#include "shape.hpp"
 #include <memory>
 #include <vector>
 using namespace std;
 
 namespace nn
 {
-namespace Layer { class Layer; }
+namespace layer { class Layer; }
+namespace optimizer { class Optimizer; }
+namespace loss { class Loss; }
 
-class Optimizer;
 
-struct NetworkData
+struct NetworkConfig
 {
-    bool compiled = false;
+    uint32_t batchSize = 1;
 
-    uint32_t batchSize = 0;
+    Shape<> inputShape;
 
-    Tensor<> inputData;
+    Shape<> outputShape;
 
-    Tensor<> m_targetData;
+    unique_ptr<loss::Loss> lossFunc;
 
-    Tensor<1, uint32_t> m_targetLabels;
-
-    Shape inputShape;
-
-    unique_ptr<Optimizer> m_lossFunction;
-
-    unique_ptr<Optimizer> m_optimier;
+    unique_ptr<optimizer::Optimizer> optimizer;
 
     vector<unique_ptr<layer::Layer>> layers;
+
+    Tensor<> parameters;
 };
 
 }
