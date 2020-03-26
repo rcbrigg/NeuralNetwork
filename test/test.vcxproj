@@ -163,6 +163,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="test_dense_layer.cpp" />
     <ClCompile Include="test_network_builder.cpp" />
     <ClCompile Include="test_sigmoid_layer.cpp" />
   </ItemGroup>

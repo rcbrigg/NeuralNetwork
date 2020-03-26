@@ -45,6 +45,12 @@ public:
 		}
 	}
 
+	template<typename T> bool operator == (const TensorBase<N, T>& rhs) const
+	{
+		if (shape() != rhs.shape()) return false;
+		return memcmp(data(), rhs.data(), size() * sizeof(float)) == 0;
+	}
+
 protected:
 	TensorBase() : data_(nullptr), owner_(false) {}
 

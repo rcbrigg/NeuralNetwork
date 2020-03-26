@@ -10,14 +10,14 @@ class Dense : public Layer
 {
 public:
 	Dense(size_t inputSize, size_t outputSize) :
-		Layer(inputSize, outputSize, inputSize * (1 + outputSize))
+		Layer(inputSize, outputSize, (inputSize + 1) * outputSize)
 	{
 	}
 
 	void forward(const float* input, const float* params, float* output) const final
 	{
-		const float* bias = params;
-		const float* weight = params + outputSize;
+		const float* bias = getBiases(params);
+		const float* weight = getWeights(params);
 		
 		for (size_t i = 0; i < outputSize; ++i)
 		{
@@ -33,7 +33,7 @@ public:
 	{
 		memset(inputError, 0, inputSize * sizeof(float));
 
-		const float* weight = data.params + outputSize;
+		const float* weight = getWeights(data.params);
 
 		for (size_t i = 0; i < outputSize; ++i)
 		{
@@ -46,8 +46,8 @@ public:
 
 	void calculateDerivatives(const BackPropData& data, float* derivatives) const final
 	{
-		float* db = derivatives;
-		float* dw = derivatives + outputSize;
+		float* db = getBiases(derivatives);
+		float* dw = getWeights(derivatives);
 
 		for (size_t i = 0; i < outputSize; ++i)
 		{
@@ -58,6 +58,11 @@ public:
 			}
 		}
 	}
+
+	const float*  getBiases(const float* parameters) const { return parameters; }
+	      float*  getBiases(float* parameters)       const { return parameters; }
+	const float* getWeights(const float* parameters) const { return parameters + outputSize;; }
+	      float* getWeights(float* parameters)       const { return parameters + outputSize;; }
 };
 }
 }

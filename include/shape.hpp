@@ -3,6 +3,7 @@
 #include <cassert>
 #include <initializer_list>
 #include <array>
+#include <vector>
 
 namespace nn
 {
@@ -101,15 +102,15 @@ class Shape<0>
 	static const size_t capacity = 8;
 
 public:
-	Shape() : dimensionCount_(0), size_(0) {}
+	Shape() : size_(0) {}
 
 	template<size_t N, typename T> Shape(const T(&dimensions)[N])
 	{
 		static_assert(N < capacity, "Capacity of Shape<> too small.");
 
-		dimensionCount_ = N;
+		dimensions_.resize(N);
 		size_ = 1;
-		for (size_t i = 0; i < dimensionCount_; ++i)
+		for (size_t i = 0; i < dimensions_.size(); ++i)
 		{
 			dimensions_[i] = dimensions[i];
 			size_ *= dimensions_[i];
@@ -121,7 +122,7 @@ public:
 	{
 		assert(dimensions.size() < capacity);
 
-		dimensionCount_ = dimensions.size();
+		dimensions_.resize(dimensions.size());
 		size_ = 1;
 		uint32_t i = 0;
 		for (auto dimension : dimensions)
@@ -136,7 +137,7 @@ public:
 	{
 		static_assert(N < capacity, "Capacity of Shape<> too small.");
 
-		dimensionCount_ = N;
+		dimensions_.resize(N);
 		size_ = shape.size();
 		memcpy(dimensions_.data(), shape.dimensions().data(), N * sizeof(dimensions_[0]));
 	}
@@ -145,10 +146,10 @@ public:
 	{
 		assert(dimensions.size() < capacity);
 
-		dimensionCount_ = dimensions.size();
+		dimensions_.resize(dimensions.size());
 		size_ = 1;
 		auto dimension = dimensions.begin();
-		for (size_t i = 0; i < dimensionCount_; ++i)
+		for (size_t i = 0; i < dimensions_.size(); ++i)
 		{
 			dimensions_[i] = *dimension++;
 			size_ *= dimensions_[i];
@@ -161,25 +162,21 @@ public:
 
 	size_t length(uint32_t dim = 0) const
 	{
-		assert(dim < dimensionCount_);
 		return dimensions()[dim];
 	}
 
 	auto slice() const
 	{
-		assert(dimensionCount_ > 1);
-		return Shape(dimensions(), dimensionCount_ - 1, size_);
+		return Shape(dimensions(), size_);
 	}
 private:
-	Shape(const std::array<uint32_t, capacity>& dimensions, size_t dimensionCount, size_t size) :
-		size_(size / dimensions.back()), dimensionCount_(dimensionCount)
+	Shape(const std::vector<uint32_t>& dimensions, size_t size) :
+		size_(size / dimensions.back()), dimensions_(dimensions.size() - 1)
 	{
-		memcpy(dimensions_.data(), dimensions.data() + 1, dimensionCount * sizeof(dimensions_[0]));
+		memcpy(dimensions_.data(), dimensions.data() + 1, dimensions_.size() * sizeof(dimensions_[0]));
 	}
 
-	std::array<uint32_t, capacity> dimensions_;
-
-	uint32_t dimensionCount_;
+	std::vector<uint32_t> dimensions_;
 
 	size_t size_;
 };
@@ -208,7 +205,7 @@ template<size_t N> inline bool operator==(const Shape<0>& lhs, const Shape<N>& r
 inline bool operator==(const Shape<0>& lhs, const Shape<0>& rhs)
 {
 	if (rhs.dimensions().size() != rhs.dimensions().size()) return false;
-	return std::memcmp(lhs.dimensions().data(), rhs.dimensions().data(), rhs.size() * sizeof(rhs.dimensions()[0])) == 0;
+	return std::memcmp(lhs.dimensions().data(), rhs.dimensions().data(), rhs.dimensions().size() * sizeof(rhs.dimensions()[0])) == 0;
 }
 
 template<size_t N, size_t M> inline bool operator!=(const Shape<N>& lhs, const Shape<M>& rhs)
