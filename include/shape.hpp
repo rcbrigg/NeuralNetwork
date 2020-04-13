@@ -31,6 +31,33 @@ public:
 		assert(size_ != 0);
 	}
 
+	Shape(const std::array<uint32_t, N>& dimensions)
+	{
+		size_ = 1;
+		for (size_t i = 0; i < N; ++i)
+		{
+			dimensions_[i] = dimensions[i];
+			size_ *= dimensions[i];
+		}
+
+		assert(size_ != 0);
+	}
+
+	Shape(const std::initializer_list<size_t>& dimensions)
+	{
+		assert(dimensions.size() == N);
+
+		size_ = 1;
+		auto ptr = dimensions.begin();
+		for (size_t i = 0; i < N; ++i)
+		{
+			dimensions_[i] = ptr[i];
+			size_ *= ptr[i];
+		}
+
+		assert(size_ != 0);
+	}
+
 	template<size_t M> Shape& operator = (const uint32_t(&dimensions)[M])
 	{
 		size_ = 1;
@@ -46,6 +73,8 @@ public:
 	
 	const auto& dimensions() const { return dimensions_; }
 
+	auto& dimensions() { return dimensions_; }
+
 	size_t length(uint32_t dim = 0) const
 	{
 		assert(dim < N);
@@ -58,7 +87,7 @@ private:
 	friend Shape<N+1>;
 
 	Shape(const std::array<uint32_t, N+1>& dimensions, size_t size) : 
-		size_(size / dimensions.back()) 
+		size_(size / dimensions[0]) 
 	{
 		memcpy(dimensions_.data(), dimensions.data() + 1, dimensions_.size() * sizeof(dimensions_[0]));
 	}
@@ -142,6 +171,14 @@ public:
 		memcpy(dimensions_.data(), shape.dimensions().data(), N * sizeof(dimensions_[0]));
 	}
 
+	template<> Shape(const Shape<1>& shape)
+	{
+		static_assert(1 < capacity, "Capacity of Shape<> too small.");
+
+		dimensions_.push_back(shape.size());
+		size_ = shape.size();
+	}
+
 	void operator = (const std::initializer_list<uint32_t>& dimensions)
 	{
 		assert(dimensions.size() < capacity);
@@ -171,7 +208,7 @@ public:
 	}
 private:
 	Shape(const std::vector<uint32_t>& dimensions, size_t size) :
-		size_(size / dimensions.back()), dimensions_(dimensions.size() - 1)
+		size_(size / dimensions[0]), dimensions_(dimensions.size() - 1)
 	{
 		memcpy(dimensions_.data(), dimensions.data() + 1, dimensions_.size() * sizeof(dimensions_[0]));
 	}

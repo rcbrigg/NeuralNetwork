@@ -26,8 +26,6 @@ struct NetworkConfig
     unique_ptr<optimizer::Optimizer> optimizer;
 
     vector<unique_ptr<layer::Layer>> layers;
-
-    Tensor<> parameters;
 };
 
 }

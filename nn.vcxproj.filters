@@ -10,6 +10,9 @@
     <Filter Include="src\layers">
       <UniqueIdentifier>{68c6658c-ff21-498f-b615-7fb55e3464d4}</UniqueIdentifier>
     </Filter>
+    <Filter Include="utils">
+      <UniqueIdentifier>{b476be72-02b1-48dc-a2cd-63fe09fdb673}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\dimension.hpp">
@@ -32,6 +35,9 @@
     </ClInclude>
     <ClInclude Include="src\layers\layer.hpp">
       <Filter>src\layers</Filter>
+    </ClInclude>
+    <ClInclude Include="utils\utils.hpp">
+      <Filter>utils</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

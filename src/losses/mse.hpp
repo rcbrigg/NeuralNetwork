@@ -17,6 +17,16 @@ public:
 		}
 	}
 
+	float calculateError(const float* output, const float* target, size_t size) final
+	{
+		float error = 0;
+		for (size_t i = 0; i < size; ++i)
+		{
+			error += square(output[i] - target[i]);
+		}
+		return error;
+	}
+
 	void calculateDerivatives(const float* output, const float* target, float* derivatives, size_t size) final
 	{
 		for (size_t i = 0; i < size; ++i)

@@ -1,6 +1,6 @@
 #pragma once
 #include "layer.hpp"
-#include <cstring>
+#include "..\..\utils\utils.hpp"
 
 namespace nn
 {
@@ -55,6 +55,22 @@ public:
 			for (size_t j = 0; j < inputSize; ++j)
 			{
 				*dw++ += data.outputError[i] * data.input[j];
+			}
+		}
+	}
+
+	void initializeParameters(float* params) const final
+	{
+		const auto sd = 1.f / (float)sqrt(getInputSize());
+		float* bias = getBiases(params);
+		float* weight = getWeights(params);
+
+		for (size_t i = 0; i < outputSize; ++i)
+		{
+			*bias++ = fastUniformRand(-1.f, 1.f);
+			for (size_t j = 0; j < inputSize; ++j)
+			{
+				*weight++ = fastUniformRand(-sd, sd);
 			}
 		}
 	}

@@ -18,7 +18,7 @@ Network::Network(NetworkArgs&& args)
 	/// Validate config
 	if (args.data->layers.size() == 0)
 	{
-		throw invalid_argument("Cannot create a networkwith 0 layers");
+		throw invalid_argument("Cannot create a networ kwith 0 layers");
 	}
 
 	impl = make_unique<HostImpl>(move(args.data));
@@ -33,12 +33,44 @@ Tensor<> Network::forward(ConstTensor<> inputs, size_t inputCount)
 	return impl->forward(inputs, inputCount);
 }
 
-void Network::train(ConstTensor<> inputs, ConstTensor<> targets, size_t inputCount)
+Tensor<1, uint32_t> Network::clasify(ConstTensor<> inputs, size_t inputCount)
 {
-	impl->train(inputs, targets, inputCount);
+	return impl->clasify(inputs, inputCount);
 }
 
-void Network::checkInputShape(Shape<> inputShape)
+void Network::train(ConstTensor<> inputs, ConstTensor<> targets, size_t inputCount, uint32_t epochs)
+{
+	checkLossFunction();
+	checkOptimizer();
+
+	for (uint32_t i = 0; i < epochs; ++i)
+	{
+		impl->train(inputs, targets, inputCount);
+	}
+}
+
+void Network::train(ConstTensor<> inputs, Tensor<1, const uint32_t> targets, size_t inputCount, uint32_t epochs)
+{
+	checkOptimizer();
+
+	for (uint32_t i = 0; i < epochs; ++i)
+	{
+		impl->train(inputs, targets, inputCount);
+	}
+}
+
+double Network::test(ConstTensor<> inputs, ConstTensor<> targets, size_t inputCount)
+{
+	checkLossFunction();
+	return impl->test(inputs, targets, inputCount);
+}
+
+double Network::test(ConstTensor<> inputs, Tensor<1, const uint32_t> targets, size_t inputCount)
+{
+	return impl->test(inputs, targets, inputCount);
+}
+
+void Network::checkInputShape(Shape<> inputShape) const
 {
 	if (inputShape.slice() != impl->getConfig().inputShape)
 	{
@@ -46,13 +78,8 @@ void Network::checkInputShape(Shape<> inputShape)
 	}
 }
 
-void Network::checkTrainingShape(Shape<> inputShape, Shape<> targetShape)
+void Network::checkTargetShape(Shape<> inputShape, Shape<> targetShape) const
 {
-	if (inputShape.slice() != impl->getConfig().inputShape)
-	{
-		throw std::invalid_argument("Input tensor shape does not match network configuration.");
-	}
-
 	if (targetShape.slice() != impl->getConfig().outputShape)
 	{
 		throw std::invalid_argument("Target tensor shape does not match network configuration.");
@@ -61,6 +88,30 @@ void Network::checkTrainingShape(Shape<> inputShape, Shape<> targetShape)
 	if (inputShape.length() != targetShape.length())
 	{
 		throw std::invalid_argument("Input and target tensor lengths do not match.");
+	}
+}
+
+void Network::checkLabels(Shape<> inputShape, Shape<> targetShape) const
+{
+	if (inputShape.length() != targetShape.length())
+	{
+		throw std::invalid_argument("Input and target tensor lengths do not match.");
+	}
+}
+
+void Network::checkLossFunction() const
+{
+	if (!impl->getConfig().lossFunc)
+	{
+		throw std::exception("No loss function has been set.");
+	}
+}
+
+void Network::checkOptimizer() const
+{
+	if (!impl->getConfig().optimizer)
+	{
+		throw std::exception("No optimizer has been set.");
 	}
 }
 

@@ -26,6 +26,7 @@
     <ClInclude Include="src\host_impl.hpp" />
     <ClInclude Include="src\layers\layer.hpp" />
     <ClInclude Include="src\network_data.hpp" />
+    <ClInclude Include="utils\utils.hpp" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\host_impl.cpp" />

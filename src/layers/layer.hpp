@@ -1,5 +1,5 @@
 #pragma once
-#include "..\..\include\shape.hpp"
+
 namespace nn
 {
 namespace layer
@@ -20,6 +20,8 @@ public:
 	virtual void backPropagate(const BackPropData& data, float* inputError) const  = 0;
 
 	virtual void calculateDerivatives(const BackPropData& data, float* derivaitves) const {}
+
+	virtual void initializeParameters(float* params) const {}
 
 	const size_t getInputSize() const { return inputSize; }
 	const size_t getOutputSize() const { return outputSize; }

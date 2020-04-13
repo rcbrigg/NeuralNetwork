@@ -9,22 +9,38 @@ class Sgd : public Optimizer
 {
 public:
 	Sgd(float learningRate) :
-		learningRate(learningRate)
+		learningRate(learningRate),
+		parameterCount(0)
 	{
 	}
 
-	Tensor<> getDerivatives() final
+	float* getDerivatives(float* data) const final
 	{
-		return derivatives;
+		return data;
 	}
 
-	void update(float* params, size_t batchSize) final
+	size_t getRequiredSize(size_t paramCount) const final
 	{
-		const size_t size = derivatives.size();
+		return paramCount;
+	}
+
+	void init(float* data, size_t paramCount) final
+	{
+		parameterCount = paramCount;
+	}
+
+	void beginBatch(float* data) final
+	{
+		memset(data, 0, sizeof(float) * parameterCount);
+	}
+
+	void update(float* params, const float* data, size_t batchSize) final
+	{
+		const size_t size = parameterCount;
 		const float scale = learningRate / batchSize;
-		const float* derivative = derivatives.data();
+		const float* derivative = data;
 
-		for (size_t i = 0; i < size; ++i)
+		for (size_t i = 0; i < parameterCount; ++i)
 		{
 			params[i] -= scale * derivative[i];
 		}
@@ -34,7 +50,7 @@ private:
 
 	float learningRate;
 
-	Tensor<> derivatives;
+	size_t parameterCount;
 };
 }
 }
