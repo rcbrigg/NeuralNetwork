@@ -30,7 +30,7 @@ Network::~Network()
 
 Tensor<> Network::forward(ConstTensor<> inputs, size_t inputCount)
 {
-	return impl->forward(inputs, inputCount);
+	return ((Impl*)impl.get())->forward(inputs, inputCount);
 }
 
 Tensor<1, uint32_t> Network::clasify(ConstTensor<> inputs, size_t inputCount)

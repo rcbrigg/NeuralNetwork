@@ -44,8 +44,5 @@
     <ClCompile Include="src\network.cpp">
       <Filter>src</Filter>
     </ClCompile>
-    <ClCompile Include="src\host_impl.cpp">
-      <Filter>src</Filter>
-    </ClCompile>
   </ItemGroup>
 </Project>
