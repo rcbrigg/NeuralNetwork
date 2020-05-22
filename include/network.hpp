@@ -7,7 +7,6 @@
 
 namespace nn
 {
-
 class Network
 {
 public:
@@ -16,6 +15,8 @@ public:
     Network(Network&&) = default;
 
     ~Network();
+
+    bool isValid() const { return impl != nullptr; }
 
 	template<size_t N, typename T> Tensor<> forward(const Tensor<N, T>& inputs)
 	{
@@ -74,7 +75,7 @@ private:
     void checkLossFunction() const;
     void checkOptimizer() const;
 
-    std::unique_ptr<class HostImpl> impl;
+    std::unique_ptr<class Impl> impl;
 };
 
 class NetworkArgs
@@ -107,6 +108,8 @@ public:
     void setLossMse();
 
     void setBatchSize(uint32_t size);
+
+    void enableOpenCLAcceleration(bool enable);
 
     Shape<>& getOutputShape() const;
 

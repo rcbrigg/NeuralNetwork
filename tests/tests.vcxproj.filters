@@ -33,10 +33,19 @@
     <ClCompile Include="test_network_simple.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="cl_helper.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="cl_helper.hpp">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="cl_helper.cl" />
   </ItemGroup>
 </Project>

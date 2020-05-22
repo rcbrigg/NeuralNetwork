@@ -1,5 +1,6 @@
 #pragma once
 #include "layer.hpp"
+#include "../cl/cl_utils.hpp"
 #include <math.h>
 #include <cstring>
 
@@ -31,6 +32,51 @@ public:
 		}
 	}
 
+	void cl_forward(cl_command_queue queue, cl_mem input, cl_mem, cl_mem output, uint32_t inOffset, uint32_t outOffset) const final
+	{
+		int error;
+		error = clSetKernelArg(forwardKernel, 0, sizeof(cl_mem), &input);
+		error |= clSetKernelArg(forwardKernel, 1, sizeof(cl_mem), &output);
+		error |= clSetKernelArg(forwardKernel, 2, sizeof(inOffset), &inOffset);
+		error |= clSetKernelArg(forwardKernel, 3, sizeof(outOffset), &outOffset);
+		error |= clEnqueueNDRangeKernel(queue, forwardKernel, 1, NULL, &inputStride, &cl::DEFAULT_WORKGROUP_SIZE, 0, NULL, NULL);
+
+		if (error != CL_SUCCESS)
+		{
+			throw std::exception("Unexpected error in layer::sigmoid::cl_forward()");
+		}
+	}
+
+	void cl_backPropagate(cl_command_queue queue, const ClBackPropData& data, cl_mem inputError) const final
+	{
+
+		int error;
+		error = clSetKernelArg(backPropagateKernel, 0, sizeof(cl_mem), &data.input);
+		error |= clSetKernelArg(backPropagateKernel, 1, sizeof(cl_mem), & data.outputError);
+		error |= clSetKernelArg(backPropagateKernel, 2, sizeof(cl_mem), &inputError);
+		error |= clSetKernelArg(backPropagateKernel, 3, sizeof(data.inputOffset), &data.inputOffset);
+		error |= clEnqueueNDRangeKernel(queue, backPropagateKernel, 1, NULL, &inputStride, &cl::DEFAULT_WORKGROUP_SIZE, 0, NULL, NULL);
+
+		if (error != CL_SUCCESS)
+		{
+			throw std::exception("Unexpected error in layer::sigmoid::cl_backPropagate()");
+		}
+	}
+
+	void cl_initKernels(cl_context context, cl_device_id device) final
+	{
+		auto program = cl::buildProgramFromFile(__FILE__, context, device);
+
+		int error;
+		forwardKernel = clCreateKernel(program, "forward", &error);
+		backPropagateKernel = clCreateKernel(program, "backPropagate", &error);
+
+		if (error != CL_SUCCESS)
+		{
+			throw std::exception("Unexpected error while creating kernel(s) for layer::cl_initKernels().");
+		}
+	}
+
 	static float sigmoid(float x)
 	{
 		return 1.f / (1.f + expf(-x));
@@ -41,6 +87,11 @@ public:
 		const float s = sigmoid(x);
 		return s * (1.f - s);
 	}
+private:
+	cl_kernel forwardKernel;
+
+	cl_kernel backPropagateKernel;
+
 };
 }
 }

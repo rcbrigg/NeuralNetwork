@@ -23,14 +23,23 @@
     <ClInclude Include="include\network.hpp" />
     <ClInclude Include="include\shape.hpp" />
     <ClInclude Include="include\tensor.hpp" />
+    <ClInclude Include="src\cl\cl_utils.hpp" />
     <ClInclude Include="src\host_impl.hpp" />
+    <ClInclude Include="src\impl.hpp" />
+    <ClInclude Include="src\layers\dense.hpp" />
     <ClInclude Include="src\layers\layer.hpp" />
+    <ClInclude Include="src\layers\sigmoid.hpp" />
     <ClInclude Include="src\network_data.hpp" />
     <ClInclude Include="utils\utils.hpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="src\cl\cl_utils.cpp" />
     <ClCompile Include="src\host_impl.cpp" />
     <ClCompile Include="src\network.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="src\layers\dense.cl" />
+    <None Include="src\layers\sigmoid.cl" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
@@ -89,12 +98,16 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
+    <IncludePath>C:\OCL\inc;$(IncludePath)</IncludePath>
+    <LibraryPath>C:\OCL\lib\x64;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
+    <IncludePath>C:\OCL\inc;$(IncludePath)</IncludePath>
+    <LibraryPath>C:\OCL\lib\x64;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -128,6 +141,9 @@
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
+    <Lib>
+      <AdditionalDependencies>OpenCL.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Lib>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -168,6 +184,9 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
+    <Lib>
+      <AdditionalDependencies>OpenCL.lib</AdditionalDependencies>
+    </Lib>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

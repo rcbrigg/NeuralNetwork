@@ -12,7 +12,6 @@ namespace layer
 TEST_CLASS(Sigmoid)
 {
 public:
-
 	TEST_METHOD(InvalidArgs)
 	{
 		auto invalidArgs = []
@@ -51,6 +50,50 @@ public:
 			Assert::AreEqual(layer.sigmoidPrime(input[i]) * outputError[i], inputError[i]);
 		}
 	}
+
+	TEST_METHOD(cl_ForwardTest)
+	{
+		Tensor<> input = { 0.0f, -1.0f, 1.0f };
+		auto clInput = clHelper.makeBuffer(input);
+		auto clOutput = clHelper.makeBuffer(input.size());
+
+		auto layer = nn::layer::Sigmoid(input.size());
+		layer.cl_initKernels(clHelper.getContext(), clHelper.getDevice());
+		layer.cl_forward(clHelper.getQueue(), clInput, nullptr, clOutput, 0, 0);
+
+		auto output = clHelper.getData(clOutput);
+		for (size_t i = 0; i < input.size(); ++i)
+		{
+			Assert::AreEqual(layer.sigmoid(input[i]), output[i]);
+		}
+	}
+
+	TEST_METHOD(cl_BackPropagateTest)
+	{
+		Tensor<> input = { 0.0f, -1.0f, 1.0f };
+		Tensor<> outputError = { 1.0f, 2.0f, 3.0f };
+		auto clInput = clHelper.makeBuffer(input);
+		auto clOutputError = clHelper.makeBuffer(outputError);
+		auto clInputError = clHelper.makeBuffer(input.size());
+		nn::layer::Layer::ClBackPropData backProp;
+		backProp.input = clInput;
+		backProp.output = nullptr;
+		backProp.outputError = clOutputError;
+		backProp.params = nullptr;
+
+		auto layer = nn::layer::Sigmoid(input.size());
+		layer.cl_initKernels(clHelper.getContext(), clHelper.getDevice());
+		layer.cl_backPropagate(clHelper.getQueue(), backProp, clInputError);
+
+		auto inputError = clHelper.getData(clInputError);
+		for (size_t i = 0; i < input.size(); ++i)
+		{
+			Assert::AreEqual(layer.sigmoidPrime(input[i]) * outputError[i], inputError[i]);
+		}
+	}
+
+private:
+	::cl::Helper clHelper;
 };
 }
 }

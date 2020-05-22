@@ -14,7 +14,7 @@ public:
 	Shape()
 	{
 		size_ = 0;
-		memset(dimensions_.data(), 0, sizeof(dimensions_) * N);
+		memset(dimensions_.data(), 0, sizeof(dimensions_[0]) * N);
 	}
 
 	template<size_t M> Shape(const uint32_t(&dimensions)[M])

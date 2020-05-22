@@ -1,6 +1,7 @@
 #include "..\include\network.hpp"
 #include "network_data.hpp"
 #include "host_impl.hpp"
+#include "device_impl.hpp"
 
 #include "layers\dense.hpp"
 #include "layers\sigmoid.hpp"
@@ -8,6 +9,7 @@
 #include "optimizers\sgd.hpp"
 
 #include "losses\mse.hpp"
+#include <iostream>
 
 using namespace std;
 
@@ -18,10 +20,30 @@ Network::Network(NetworkArgs&& args)
 	/// Validate config
 	if (args.data->layers.size() == 0)
 	{
-		throw invalid_argument("Cannot create a networ kwith 0 layers");
+		throw invalid_argument("Cannot create a network with 0 layers.");
 	}
 
-	impl = make_unique<HostImpl>(move(args.data));
+	if (args.data->cl)
+	{
+		if (cl::Wrapper::instance().init())
+		{
+			impl = make_unique<DeviceImpl>(move(args.data));
+		}
+		else
+		{
+			std::cout << "Could not create OpenCL context. Reverting to CPU implementation.\n";
+			impl = make_unique<HostImpl>(move(args.data));
+		}
+	}
+	else
+	{
+		impl = make_unique<HostImpl>(move(args.data));
+	}
+
+	if (!impl->init())
+	{
+		throw exception("Failed to create network.");
+	}
 }
 
 Network::~Network()
@@ -178,6 +200,11 @@ void NetworkArgs::setBatchSize(uint32_t size)
 	data->batchSize = size;
 }
 
+void NetworkArgs::enableOpenCLAcceleration(bool enable)
+{
+	data->cl = enable;
+}
+
 Shape<>& NetworkArgs::getOutputShape() const
 {
 	return data->outputShape;
@@ -190,5 +217,4 @@ void NetworkArgs::checkAddLayer()
 		throw std::invalid_argument("Input size needs to be set before adding layers.");
 	}
 }
-
 }

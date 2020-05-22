@@ -17,6 +17,8 @@ struct NetworkConfig
 {
     uint32_t batchSize = 1;
 
+    bool cl = false;
+
     Shape<> inputShape;
 
     Shape<> outputShape;

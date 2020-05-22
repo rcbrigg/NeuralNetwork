@@ -10,5 +10,6 @@
 // add headers that you want to pre-compile here
 #include "CppUnitTest.h"
 #include "..\include\network.hpp"
-
+#include "..\src\cl\cl_utils.hpp"
+#include "cl_helper.hpp"
 #endif //PCH_H

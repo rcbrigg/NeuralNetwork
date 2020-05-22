@@ -14,7 +14,7 @@ inline float fastUniformRand(float min, float max)
 
 inline Tensor<> uniformRandomTensor(size_t size, float min, float max)
 {
-	std::default_random_engine generator;
+	static std::default_random_engine generator;
 	std::uniform_real_distribution<float> distribution(min, max);
 
 	auto tensor = Tensor<>(size);
@@ -38,5 +38,17 @@ template<typename T> size_t argMax(const T* args, size_t count)
 		}
 	}
 	return argMax;
+}
+
+inline bool AreWithinTolerance(const float* a, const float* b, size_t size, float delta)
+{
+	for (size_t i = 0; i < size; ++i)
+	{
+		if (abs(a[i] - b[i]) > delta)
+		{
+			return false;
+		}
+	}
+	return true;
 }
 }

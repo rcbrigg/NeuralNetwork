@@ -48,5 +48,18 @@ namespace test
 			args.addLayerSigmoid();
 			Assert::IsTrue(args.getOutputShape() == Shape<>({ 16, 10 }));
 		}
+
+		TEST_METHOD(OpenClNetwork)
+		{
+			NetworkArgs args;
+			args.setInputShape({ 15 });
+			args.addLayerDense(5);
+			args.addLayerDense(10);
+			args.addLayerSigmoid();
+			args.setOptimizerGradientDescent();
+			args.setLossMse();
+			args.enableOpenCLAcceleration(true);
+			auto network = Network(move(args));
+		}
 	};
 }

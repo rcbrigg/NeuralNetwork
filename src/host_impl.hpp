@@ -4,13 +4,18 @@
 #include "optimizers/optimizer.hpp"
 #include "../utils/utils.hpp"
 #include "losses/loss.hpp"
+#include "impl.hpp"
 
 namespace nn
 {
-class HostImpl
+class HostImpl : public Impl
 {
 public:
-	HostImpl(unique_ptr<NetworkConfig>&& config)
+	HostImpl(unique_ptr<const NetworkConfig>&& config) : Impl(move(config))
+	{
+	}
+
+	bool init() final
 	{
 		size_t totalOutputs = 0;
 		size_t parameterCount = 0;
@@ -24,7 +29,7 @@ public:
 		layerOutputs = Tensor<>(totalOutputs);
 		layerError = Tensor<>(totalOutputs);
 		parameters = Tensor<>(parameterCount);
-		optimizerData = Tensor<>(config->optimizer->getRequiredSize(parameterCount));
+		optimizerData = Tensor<>(parameterCount);
 
 		float* layerParams = parameters.data();
 		for (const auto& layer : config->layers)
@@ -32,12 +37,15 @@ public:
 			layer->initializeParameters(layerParams);
 			layerParams += layer->getParameterCount();
 		}
-		
-		config->optimizer->init(parameters.data(), parameterCount);
-		this->config = move(config);
+
+		if (config->optimizer)
+		{
+			config->optimizer->init(parameters.data(), parameterCount);
+		}
+		return true;
 	}
 
-	Tensor<> forward(const ConstTensor<>& input, size_t inputCount)
+	Tensor<> forward(const ConstTensor<>& input, size_t inputCount) final
 	{
 		const size_t outputSize = config->layers.back()->getOutputSize();
 		const size_t inputSize = config->inputShape.size();
@@ -48,7 +56,7 @@ public:
 		float* layerOutput = outputs.data();
 		const float* layerInput = input.data();
 
-		for (size_t i = 1; i < inputCount; ++i)
+		for (size_t i = 0; i < inputCount; ++i)
 		{
 			forward(config->layers, layerInput, parameters.data(), layerOutputs.data(), layerOutput);
 			layerInput += inputSize;
@@ -58,7 +66,7 @@ public:
 		return outputs;
 	}
 
-	Tensor<1, uint32_t> clasify(const ConstTensor<>& input, size_t inputCount)
+	Tensor<1, uint32_t> clasify(const ConstTensor<>& input, size_t inputCount) final
 	{
 		const size_t outputSize = config->layers.back()->getOutputSize();
 		const size_t inputSize = config->inputShape.size();
@@ -77,8 +85,18 @@ public:
 		return classifications;
 	}
 
+	double test(const ConstTensor<>& input, const Tensor<1, const uint32_t>& targets, size_t inputCount) final
+	{
+		return testCommon(input, targets, inputCount);
+	}
+
+	double test(const ConstTensor<>& input, const Tensor<1, const float>& targets, size_t inputCount) final
+	{
+		return testCommon(input, targets, inputCount);
+	}
+
 	template<typename T>
-	double test(const ConstTensor<>& input, const Tensor<1, const T>& targets, size_t inputCount)
+	double testCommon(const ConstTensor<>& input, const Tensor<1, const T>& targets, size_t inputCount)
 	{
 		double loss = 0.0;
 
@@ -101,10 +119,20 @@ public:
 		return loss / double(inputCount);
 	}
 
-	template<typename T>
-	void train(const ConstTensor<>& inputs, const Tensor<1, const T>& targets, size_t inputCount)
+	void train(const ConstTensor<>& inputs, const Tensor<1, const float>& targets, size_t inputCount) final
 	{
-		float* derivatives = config->optimizer->getDerivatives(optimizerData.data());
+		trainCommon(inputs, targets, inputCount);
+	}
+
+	void train(const ConstTensor<>& inputs, const Tensor<1, const uint32_t>& targets, size_t inputCount) final
+	{
+		trainCommon(inputs, targets, inputCount);
+	}
+
+	template<typename T>
+	void trainCommon(const ConstTensor<>& inputs, const Tensor<1, const T>& targets, size_t inputCount)
+	{
+		float* derivatives = this->optimizerData.data();
 
 		const size_t inputSize = config->inputShape.size();
 		const size_t targetSize = getTargetSize<T>();
@@ -127,17 +155,6 @@ public:
 
 			config->optimizer->update(parameters.data(), optimizerData.data(), batchSize);
 		}	
-	}
-
-	void compile(NetworkConfig& data)
-	{
-		size_t outputSize = 0;
-		size_t paramSize = 0;
-	}
-
-	const NetworkConfig& getConfig() const
-	{
-		return *config;
 	}
 
 private:
@@ -187,7 +204,7 @@ private:
 
 		calculateOutputDerivatives(data.output, target, outputSize, outputError);
 
-		float* derivatives = config->optimizer->getDerivatives(optimizerData.data()) + parameters.size();
+		float* derivatives = optimizerData.data() + parameters.size();
 		const float* layerParams = parameters.data(config->layers.back()->getParameterCount());
 
 		for (size_t i = layerCount - 1; i > 0; --i)
@@ -255,7 +272,5 @@ private:
 
 	// data used by optimiser (e.g. derivatives)
 	Tensor<> optimizerData;
-
-	unique_ptr<NetworkConfig> config;
 };
 }
