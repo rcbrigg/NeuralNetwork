@@ -33,11 +33,11 @@ public:
 		uint32_t inputOffset  = 0;
 	};
 
-	virtual void cl_forward(cl_command_queue queue, cl_mem input, cl_mem params, cl_mem output, uint32_t inOffset, uint32_t outOffset) const = 0;
+	virtual void cl_forward(cl_command_queue queue, cl_mem input, cl_mem params, cl_mem output, uint32_t inOffset, uint32_t outOffset, uint32_t batchSize) const = 0;
 
-	virtual void cl_backPropagate(cl_command_queue queue, const ClBackPropData& data, cl_mem inputError) const = 0;
+	virtual void cl_backPropagate(cl_command_queue queue, const ClBackPropData& data, cl_mem inputError, uint32_t batchSize) const = 0;
 
-	virtual void cl_calculateDerivatives(cl_command_queue queue, const ClBackPropData& data, cl_mem derivaitves) const {}
+	virtual void cl_calculateDerivatives(cl_command_queue queue, const ClBackPropData& data, cl_mem derivaitves, uint32_t batchSize) const {}
 
 	virtual void cl_initializeParameters(cl_command_queue queue, cl_mem params) const {}
 
@@ -52,8 +52,6 @@ protected:
 	Layer(size_t inputSize, size_t outputSize, size_t parmeterCount) :
 		inputSize(inputSize),
 		outputSize(outputSize),
-		inputStride(cl::alignSize(inputSize)),
-		outputStride(cl::alignSize(outputSize)),
 		parmeterCount(parmeterCount)
 	{
 		if (outputSize == 0)
@@ -64,8 +62,6 @@ protected:
 
 	const uint32_t inputSize;
 	const uint32_t outputSize;
-	const size_t   inputStride;
-	const size_t   outputStride;
 	const uint32_t parmeterCount;
 };
 }

@@ -35,8 +35,9 @@ public:
 		}
 	}
 
-	void cl_calculateError(cl_command_queue queue, cl_mem output, cl_mem target, cl_mem ouputError, uint32_t targetOffset, uint32_t size) const  final
+	void cl_calculateError(cl_command_queue queue, cl_mem output, cl_mem target, cl_mem ouputError, uint32_t targetOffset, uint32_t height, uint32_t width) const  final
 	{
+		uint32_t size = height * width;
 		size_t globalSize = cl::alignSize(size);
 
 		int error;
@@ -53,16 +54,16 @@ public:
 		}
 	}
 
-	void cl_calculateTotalError(cl_command_queue queue, cl_mem output, cl_mem target, cl_mem ouputError, uint32_t size, size_t count) const  final
+	void cl_calculateTotalError(cl_command_queue queue, cl_mem output, cl_mem target, cl_mem ouputError, uint32_t height, uint32_t width) const  final
 	{
-		size_t globalSize = count * cl::DEFAULT_WORKGROUP_SIZE;
-		uint32_t stride = cl::alignSize(size);
+		uint32_t size = height * width;
+		size_t globalSize = cl::alignSize(size);
 
 		int error;
 		error = clSetKernelArg(calculateTotalErrorKernel, 0, sizeof(cl_mem), &output);
 		error |= clSetKernelArg(calculateTotalErrorKernel, 1, sizeof(cl_mem), &target);
 		error |= clSetKernelArg(calculateTotalErrorKernel, 2, sizeof(cl_mem), &ouputError);
-		error |= clSetKernelArg(calculateTotalErrorKernel, 3, sizeof(stride), &stride);
+		error |= clSetKernelArg(calculateTotalErrorKernel, 3, sizeof(width), &width);
 		error |= clSetKernelArg(calculateTotalErrorKernel, 4, sizeof(size), &size);
 		error |= clEnqueueNDRangeKernel(queue, calculateTotalErrorKernel, 1, NULL, &globalSize, &cl::DEFAULT_WORKGROUP_SIZE, 0, NULL, NULL);
 
@@ -72,8 +73,9 @@ public:
 		}
 	}
 
-	void cl_calculateDerivatives(cl_command_queue queue, cl_mem output, cl_mem target, cl_mem derivatives, uint32_t targetOffset, uint32_t size) const final
+	void cl_calculateDerivatives(cl_command_queue queue, cl_mem output, cl_mem target, cl_mem derivatives, uint32_t targetOffset, uint32_t height, uint32_t width) const final
 	{
+		uint32_t size = height * width;
 		size_t globalSize = cl::alignSize(size);
 
 		int error;
@@ -84,6 +86,12 @@ public:
 		error |= clSetKernelArg(calculateDerivativesKernel, 4, sizeof(size), &size);
 		error |= clEnqueueNDRangeKernel(queue, calculateDerivativesKernel, 1, NULL, &globalSize, &cl::DEFAULT_WORKGROUP_SIZE, 0, NULL, NULL);
 
+		//auto data = clEnqueueMapBuffer(queue, output, CL_TRUE, CL_MAP_READ, 0, 1 * sizeof(float), 0, NULL, NULL, &error);
+		//auto data1 = clEnqueueMapBuffer(queue, target, CL_TRUE, CL_MAP_READ, 0, 100 * sizeof(float), 0, NULL, NULL, &error);
+		//auto data2 = clEnqueueMapBuffer(queue, derivatives, CL_TRUE, CL_MAP_READ, 0, 1 * sizeof(float), 0, NULL, NULL, &error);
+		//clEnqueueUnmapMemObject(queue, output, data, 0, NULL, NULL);
+		//clEnqueueUnmapMemObject(queue, target, data1, 0, NULL, NULL);
+		//clEnqueueUnmapMemObject(queue, derivatives, data2, 0, NULL, NULL);
 		if (error != CL_SUCCESS)
 		{
 			throw std::exception("Unexpected error in layer::dense::cl_calculateDerivatives()");

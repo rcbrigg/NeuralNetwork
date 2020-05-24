@@ -78,10 +78,12 @@ public:
 		}
 	}
 
-	void cl_forward(cl_command_queue queue, cl_mem input, cl_mem params, cl_mem output, uint32_t inOffset, uint32_t outOffset) const final
+	void cl_forward(cl_command_queue queue, cl_mem input, cl_mem params, cl_mem output, uint32_t inOffset, uint32_t outOffset, uint32_t batchSize) const final
 	{
-		size_t globalSize = cl::DEFAULT_WORKGROUP_SIZE * outputSize;
-
+		uint32_t size = batchSize * outputSize;
+		size_t groupCount = size; // configure this?
+		size_t globalSize = cl::DEFAULT_WORKGROUP_SIZE * groupCount;
+		
 		int error;
 		error = clSetKernelArg(forwardKernel, 0, sizeof(cl_mem), &input);
 		error |= clSetKernelArg(forwardKernel, 1, sizeof(cl_mem), &output);
@@ -89,6 +91,8 @@ public:
 		error |= clSetKernelArg(forwardKernel, 3, sizeof(inOffset), &inOffset);
 		error |= clSetKernelArg(forwardKernel, 4, sizeof(outOffset), &outOffset);
 		error |= clSetKernelArg(forwardKernel, 5, sizeof(inputSize), &inputSize);
+		error |= clSetKernelArg(forwardKernel, 6, sizeof(outputSize), &outputSize);
+		error |= clSetKernelArg(forwardKernel, 7, sizeof(size), &size);
 		error |= clEnqueueNDRangeKernel(queue, forwardKernel, 1, NULL, &globalSize, &cl::DEFAULT_WORKGROUP_SIZE, 0, NULL, NULL);
 
 		if (error != CL_SUCCESS)
@@ -97,16 +101,19 @@ public:
 		}
 	}
 
-	void cl_backPropagate(cl_command_queue queue, const ClBackPropData& data, cl_mem inputError) const final
+	void cl_backPropagate(cl_command_queue queue, const ClBackPropData& data, cl_mem inputError, uint32_t batchSize) const final
 	{
-		size_t globalSize = inputStride;
-
+		uint32_t size = batchSize * inputSize;
+		size_t groupCount = size; // configure this?
+		size_t globalSize = cl::DEFAULT_WORKGROUP_SIZE * groupCount;
+		
 		int error;
 		error = clSetKernelArg(backPropagateKernel, 0, sizeof(cl_mem), &data.outputError);
 		error |= clSetKernelArg(backPropagateKernel, 1, sizeof(cl_mem), &inputError);
 		error |= clSetKernelArg(backPropagateKernel, 2, sizeof(cl_mem), &data.params);
-		error |= clSetKernelArg(backPropagateKernel, 3, sizeof(inputSize), &inputSize);
-		error |= clSetKernelArg(backPropagateKernel, 4, sizeof(outputSize), &outputSize);
+		error |= clSetKernelArg(backPropagateKernel, 3, sizeof(size), &size); // TODO: remove
+		error |= clSetKernelArg(backPropagateKernel, 4, sizeof(inputSize), &inputSize);
+		error |= clSetKernelArg(backPropagateKernel, 5, sizeof(outputSize), &outputSize);
 		error |= clEnqueueNDRangeKernel(queue, backPropagateKernel, 1, NULL, &globalSize, &cl::DEFAULT_WORKGROUP_SIZE, 0, NULL, NULL);
 
 		if (error != CL_SUCCESS)
@@ -115,9 +122,11 @@ public:
 		}
 	}
 
-	void cl_calculateDerivatives(cl_command_queue queue, const ClBackPropData& data, cl_mem derivaitves) const final
+	void cl_calculateDerivatives(cl_command_queue queue, const ClBackPropData& data, cl_mem derivaitves, uint32_t batchSize) const final
 	{
-		size_t globalSize = cl::DEFAULT_WORKGROUP_SIZE * outputSize;
+		uint32_t size = batchSize * outputSize;
+		size_t groupCount = size; // configure this?
+		size_t globalSize = cl::DEFAULT_WORKGROUP_SIZE * groupCount;
 
 		int error;
 		error = clSetKernelArg(calculateDerivativesKernel, 0, sizeof(cl_mem), &data.input);
@@ -125,6 +134,8 @@ public:
 		error |= clSetKernelArg(calculateDerivativesKernel, 2, sizeof(cl_mem), &derivaitves);
 		error |= clSetKernelArg(calculateDerivativesKernel, 3, sizeof(data.inputOffset), &data.inputOffset);
 		error |= clSetKernelArg(calculateDerivativesKernel, 4, sizeof(inputSize), &inputSize);
+		error |= clSetKernelArg(calculateDerivativesKernel, 5, sizeof(outputSize), &outputSize);
+		error |= clSetKernelArg(calculateDerivativesKernel, 6, sizeof(size), &size);
 		error |= clEnqueueNDRangeKernel(queue, calculateDerivativesKernel, 1, NULL, &globalSize, &cl::DEFAULT_WORKGROUP_SIZE, 0, NULL, NULL);
 
 		if (error != CL_SUCCESS)

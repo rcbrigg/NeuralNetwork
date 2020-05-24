@@ -59,7 +59,7 @@ public:
 		auto clOutput = clHelper.makeBuffer(output);
 		auto clTarget = clHelper.makeBuffer(target);
 		auto clError = clHelper.makeBuffer(error.size());
-		lossFunc.cl_calculateError(clHelper.getQueue(), clOutput, clTarget, clError, 0, output.size());
+		lossFunc.cl_calculateError(clHelper.getQueue(), clOutput, clTarget, clError, 0, output.size(), 1);
 		auto result = clHelper.getData(clError);
 
 		Assert::IsTrue(AreWithinTolerance(error.data(), result.data(), error.size(), 0.0001));
@@ -88,7 +88,7 @@ public:
 				errors[i] += error[j + 32 * i];
 			}
 		}
-		lossFunc.cl_calculateTotalError(clHelper.getQueue(), clOutput, clTarget, clError, 32, 4);
+		lossFunc.cl_calculateTotalError(clHelper.getQueue(), clOutput, clTarget, clError, 4, 32);
 		auto result = clHelper.getData(clError);
 
 		Assert::IsTrue(AreWithinTolerance(errors.data(), result.data(), errors.size(), 0.001));
@@ -106,7 +106,7 @@ public:
 		auto clOutput = clHelper.makeBuffer(output);
 		auto clTarget = clHelper.makeBuffer(target);
 		auto clError = clHelper.makeBuffer(error.size());
-		lossFunc.cl_calculateDerivatives(clHelper.getQueue(), clOutput, clTarget, clError, 0, output.size());
+		lossFunc.cl_calculateDerivatives(clHelper.getQueue(), clOutput, clTarget, clError, 0, output.size(), 1);
 		auto result = clHelper.getData(clError);
 
 		Assert::IsTrue(AreWithinTolerance(error.data(), result.data(), error.size(), 0.0001));

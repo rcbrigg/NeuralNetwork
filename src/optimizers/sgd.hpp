@@ -43,7 +43,7 @@ public:
 
 		int error;
 		updateKernel = clCreateKernel(program, "update", &error);
-		initBatchKernel = clCreateKernel(program, "initBatch", &error);
+		initKernel = clCreateKernel(program, "init", &error);
 		if (error != CL_SUCCESS)
 		{
 			throw std::exception("Unexpected error while creating kernel(s) for optimizer::sgd.");
@@ -52,11 +52,14 @@ public:
 		parameterCount = paramCount;
 	}
 
-	void cl_beginBatch(cl_command_queue queue, cl_mem derivatives)
+	void cl_beginTraining(cl_command_queue queue, cl_mem derivatives) final
 	{
 		int error;
-		error = clSetKernelArg(initBatchKernel, 0, sizeof(cl_mem), &derivatives);
-		error |= clEnqueueNDRangeKernel(queue, initBatchKernel, 1, NULL, &parameterCount, &cl::DEFAULT_WORKGROUP_SIZE, 0, NULL, NULL);
+		uint32_t size = parameterCount;
+		size_t globalSize = cl::alignSize(size);
+		error = clSetKernelArg(initKernel, 0, sizeof(cl_mem), &derivatives);
+		error = clSetKernelArg(initKernel, 1, sizeof(size), &size);
+		error |= clEnqueueNDRangeKernel(queue, initKernel, 1, NULL, &globalSize, &cl::DEFAULT_WORKGROUP_SIZE, 0, NULL, NULL);
 
 		if (error != CL_SUCCESS)
 		{
@@ -67,13 +70,17 @@ public:
 	void cl_update(cl_command_queue queue, cl_mem parameters, cl_mem derivatives, size_t batchSize)
 	{
 		const float scale = learningRate / batchSize;
+		uint32_t size = parameterCount;
+		size_t globalSize = cl::alignSize(size);
 
 		int error;
 		error = clSetKernelArg(updateKernel, 0, sizeof(cl_mem), &parameters);
 		error |= clSetKernelArg(updateKernel, 1, sizeof(cl_mem), &derivatives);
 		error |= clSetKernelArg(updateKernel, 2, sizeof(scale), &scale);
-		error |= clEnqueueNDRangeKernel(queue, updateKernel, 1, NULL, &parameterCount, &cl::DEFAULT_WORKGROUP_SIZE, 0, NULL, NULL);
+		error |= clSetKernelArg(updateKernel, 3, sizeof(size), &size);
+		error |= clEnqueueNDRangeKernel(queue, updateKernel, 1, NULL, &globalSize, &cl::DEFAULT_WORKGROUP_SIZE, 0, NULL, NULL);
 
+		
 		if (error != CL_SUCCESS)
 		{
 			throw std::exception("Unexpected error in optimizer::sgd::cl_update()");
@@ -87,7 +94,7 @@ private:
 
 	cl_kernel updateKernel;
 
-	cl_kernel initBatchKernel;
+	cl_kernel initKernel;
 };
 }
 }

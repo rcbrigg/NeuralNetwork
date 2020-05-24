@@ -32,14 +32,18 @@ public:
 		}
 	}
 
-	void cl_forward(cl_command_queue queue, cl_mem input, cl_mem, cl_mem output, uint32_t inOffset, uint32_t outOffset) const final
+	void cl_forward(cl_command_queue queue, cl_mem input, cl_mem, cl_mem output, uint32_t inOffset, uint32_t outOffset, uint32_t batchSize) const final
 	{
+		uint32_t size = batchSize * inputSize;
+		size_t globalSize = cl::alignSize(size);
+
 		int error;
 		error = clSetKernelArg(forwardKernel, 0, sizeof(cl_mem), &input);
 		error |= clSetKernelArg(forwardKernel, 1, sizeof(cl_mem), &output);
 		error |= clSetKernelArg(forwardKernel, 2, sizeof(inOffset), &inOffset);
 		error |= clSetKernelArg(forwardKernel, 3, sizeof(outOffset), &outOffset);
-		error |= clEnqueueNDRangeKernel(queue, forwardKernel, 1, NULL, &inputStride, &cl::DEFAULT_WORKGROUP_SIZE, 0, NULL, NULL);
+		error |= clSetKernelArg(forwardKernel, 4, sizeof(size), &size);
+		error |= clEnqueueNDRangeKernel(queue, forwardKernel, 1, NULL, &globalSize, &cl::DEFAULT_WORKGROUP_SIZE, 0, NULL, NULL);
 
 		if (error != CL_SUCCESS)
 		{
@@ -47,15 +51,18 @@ public:
 		}
 	}
 
-	void cl_backPropagate(cl_command_queue queue, const ClBackPropData& data, cl_mem inputError) const final
+	void cl_backPropagate(cl_command_queue queue, const ClBackPropData& data, cl_mem inputError, uint32_t batchSize) const final
 	{
+		uint32_t size = batchSize * inputSize;
+		size_t globalSize = cl::alignSize(size);
 
 		int error;
 		error = clSetKernelArg(backPropagateKernel, 0, sizeof(cl_mem), &data.input);
 		error |= clSetKernelArg(backPropagateKernel, 1, sizeof(cl_mem), & data.outputError);
 		error |= clSetKernelArg(backPropagateKernel, 2, sizeof(cl_mem), &inputError);
 		error |= clSetKernelArg(backPropagateKernel, 3, sizeof(data.inputOffset), &data.inputOffset);
-		error |= clEnqueueNDRangeKernel(queue, backPropagateKernel, 1, NULL, &inputStride, &cl::DEFAULT_WORKGROUP_SIZE, 0, NULL, NULL);
+		error |= clSetKernelArg(backPropagateKernel, 4, sizeof(size), &size);
+		error |= clEnqueueNDRangeKernel(queue, backPropagateKernel, 1, NULL, &globalSize, &cl::DEFAULT_WORKGROUP_SIZE, 0, NULL, NULL);
 
 		if (error != CL_SUCCESS)
 		{

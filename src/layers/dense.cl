@@ -12,18 +12,18 @@ inline float fastRand(float min, float max, uint* seed)
 }
 
 __kernel void initParams(__global float* params,
-						 const uint inputSize)
+						 const uint inputWidth)
 {
-	const float sd = rsqrt((double)inputSize);
-	const size_t localSize = get_local_size(0);
+	const float sd = rsqrt((double)inputWidth);
+	const size_t stride = get_local_size(0);
 	const size_t lid = get_local_id(0);
 	const size_t wid = get_group_id(0);
 	const size_t outputSize = get_num_groups(0);
-	const size_t offset = outputSize + wid * inputSize;
+	const size_t offset = outputSize + wid * inputWidth;
 	__global float* weights = params + offset;
 	uint seed = get_global_id(0);
 
-	for (size_t i = lid ; i < inputSize; i += localSize)
+	for (size_t i = lid ; i < inputWidth; i += stride)
 	{
 		weights[i] = fastRand(-sd, sd, &seed);
 	}
@@ -35,13 +35,14 @@ __kernel void initParams(__global float* params,
 	}
 }
 
-// Each workgroup computes a single output element
 __kernel void forward(__global const float* input,
 					  __global float* output,
 					  __global const float* params,
 					  const uint inputOffset,
 					  const uint outputOffset,
-					  const uint inputSize)
+					  const uint inputWidth,
+					  const uint outputWidth,
+					  const uint outputSize)
 {
 	input += inputOffset;
 	output += outputOffset;
@@ -51,79 +52,96 @@ __kernel void forward(__global const float* input,
 	const size_t localSize = get_local_size(0);
 	const size_t lid = get_local_id(0);
 	const size_t wid = get_group_id(0);
-	const size_t outputSize = get_num_groups(0);
-	const size_t offset = outputSize + wid * inputSize;
-	const __global float* row = params + offset; // row of weight matrix
+	const size_t groupCount = get_num_groups(0);
 
-	temp[lid] = 0.f;
-
-	for (uint i = lid; i < inputSize; i += localSize)
+	// Todo: optimise group working on multiple rows if rows are small
+	for (uint j = wid; j < outputSize; j += groupCount)
 	{
-		temp[lid] += row[i] * input[i];
-	}
+		uint row = wid;// j% outputWidth;
+		const __global float* weights = params + outputWidth + row * inputWidth; // row of weight matrix
 
-	for (uint i = localSize / 2; i > 0; i /= 2)
-	{
-		work_group_barrier(CLK_LOCAL_MEM_FENCE);
-		if (lid < i)
+		temp[lid] = 0.f;
+
+		// sum
+		for (uint i = lid; i < inputWidth; i += localSize)
 		{
-			temp[lid] += temp[lid + i];
+			temp[lid] += weights[i] * input[i];
 		}
-	}
 
-	if (lid == 0)
-	{
-		// bias + weight matrix row product
-		output[wid] = params[wid] + temp[0];
+		// accumulate
+		for (uint i = localSize / 2; i > 0; i /= 2)
+		{
+			work_group_barrier(CLK_LOCAL_MEM_FENCE);
+			if (lid < i)
+			{
+				temp[lid] += temp[lid + i];
+			}
+		}
+
+		if (lid == 0)
+		{
+			// bias + weight matrix row product
+			output[j] = params[row] + temp[0];
+		}
 	}
 }
 
 __kernel void backPropagate(__global const float* outputError,
 							__global float* inputError,
 							__global const float* params,
-							const uint inputSize,
-							const uint outputSize)
+							const uint ACTUAL_GID, // TODO REMOVE
+							const uint inputWidth,
+							const uint outputWidth)
 {
 	__local float temp[WORKGROUP_SIZE];
 
 	size_t gid = get_global_id(0);
 
-	if (gid < inputSize)
+	if (gid < ACTUAL_GID)
 	{
-		size_t lid = get_local_id(0);
-		const __global float* weights = params + outputSize;
-		temp[lid] = 0;
+		const uint col = gid % inputWidth;
+		outputError += gid / inputWidth;
 
-		for (size_t i = gid, j = 0; j < outputSize; i += inputSize, j++)
+		const __global float* weights = params + outputWidth;
+		float sum = 0;
+
+		for (size_t i = col, j = 0; j < outputWidth; i += inputWidth, j++)
 		{
-			temp[lid] += weights[i] * outputError[j];
+			sum += weights[i] * outputError[j];
 		}
 
-		inputError[gid] = temp[lid];
+		inputError[gid] = sum;
 	}
-	
 }
 
 __kernel void calculateDerivatives(__global const float* input,
 								   __global const float* outputError,
 								   __global float* derivatives,
 								   const uint inputOffset,
-								   const uint inputSize)
+								   const uint inputWidth,
+								   const uint outputWidth,
+								   const uint outputSize)
 {
 	input += inputOffset;
-	const size_t localSize = get_local_size(0);
-	const size_t outputSize = get_num_groups(0);
+	const size_t groupSize = get_local_size(0);
 	const size_t wid = get_group_id(0);
 	const size_t lid = get_local_id(0);
-	__global float* dw = derivatives + outputSize + wid * inputSize;
+	const size_t stride = get_num_groups(0);
 
-	for (size_t i = lid; i < inputSize; i += localSize)
-	{
-		dw[i] += outputError[wid] * input[i];
-	}
+	// Todo: optimise group working on multiple rows if rows are small
+	uint row = wid;//% outputWidth;
+	__global float* dw = derivatives + outputWidth + row * inputWidth;
 
-	if (lid == 0)
-	{
-		derivatives[wid] += outputError[wid];
+	for (uint j = wid; j < outputSize; j += stride)
+	{	
+		for (size_t i = lid; i < inputWidth; i += groupSize)
+		{
+			dw[i] += outputError[j] * input[i];
+		}
+
+		if (lid == 0)
+		{
+			derivatives[row] += outputError[j];
+		}
 	}
 }

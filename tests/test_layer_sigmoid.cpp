@@ -59,7 +59,7 @@ public:
 
 		auto layer = nn::layer::Sigmoid(input.size());
 		layer.cl_initKernels(clHelper.getContext(), clHelper.getDevice());
-		layer.cl_forward(clHelper.getQueue(), clInput, nullptr, clOutput, 0, 0);
+		layer.cl_forward(clHelper.getQueue(), clInput, nullptr, clOutput, 0, 0, 1);
 
 		auto output = clHelper.getData(clOutput);
 		for (size_t i = 0; i < input.size(); ++i)
@@ -83,7 +83,7 @@ public:
 
 		auto layer = nn::layer::Sigmoid(input.size());
 		layer.cl_initKernels(clHelper.getContext(), clHelper.getDevice());
-		layer.cl_backPropagate(clHelper.getQueue(), backProp, clInputError);
+		layer.cl_backPropagate(clHelper.getQueue(), backProp, clInputError, 1);
 
 		auto inputError = clHelper.getData(clInputError);
 		for (size_t i = 0; i < input.size(); ++i)

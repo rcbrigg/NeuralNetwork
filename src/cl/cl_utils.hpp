@@ -65,6 +65,38 @@ inline size_t alignSize(size_t s)
     return (s + 0x1F) & ~0x1F;
 }
 
+inline size_t getStride(size_t s)
+{
+    if (s > 32)
+    {
+        return (s + 0x1F) & ~0x1F;
+    }
+    else if (s > 16)
+    {
+        return 32;
+    }
+    else if (s > 8)
+    {
+        return 16;
+    }
+    else if (s > 4)
+    {
+        return 8;
+    }
+    else if (s > 2)
+    {
+        return 4;
+    }
+    else if (s > 1)
+    {
+        return 2;
+    }
+    else
+    {
+        return 1;
+    }
+}
+
 class Wrapper
 {
 public:

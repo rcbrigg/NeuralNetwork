@@ -34,7 +34,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\cl\cl_utils.cpp" />
-    <ClCompile Include="src\host_impl.cpp" />
     <ClCompile Include="src\network.cpp" />
   </ItemGroup>
   <ItemGroup>

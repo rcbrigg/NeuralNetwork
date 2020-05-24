@@ -22,7 +22,7 @@ public:
 	virtual void cl_init(cl_context context, cl_device_id device, cl_command_queue queue, cl_mem derivatives, size_t paramCount) = 0;
 
 	// Called at the start of each batch
-	virtual void cl_beginBatch(cl_command_queue queue, cl_mem derivatives) = 0;
+	virtual void cl_beginTraining(cl_command_queue queue, cl_mem derivatives) = 0;
 
 	// Update parameters after backpropagation pass (end of batch)
 	virtual void cl_update(cl_command_queue queue, cl_mem parameters, cl_mem derivatives, size_t batchSize) = 0;

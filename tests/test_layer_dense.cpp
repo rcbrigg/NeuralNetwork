@@ -116,7 +116,7 @@ public:
 		auto clParams = clHelper.makeBuffer(params);
 		layer.cl_initKernels(clHelper.getContext(), clHelper.getDevice());
 		layer.forward(input.data(), params.data(), target.data());
-		layer.cl_forward(clHelper.getQueue(), clInput, clParams, clOutput, 0, 0);
+		layer.cl_forward(clHelper.getQueue(), clInput, clParams, clOutput, 0, 0, 1);
 		auto output = clHelper.getData(clOutput);
 		Assert::IsTrue(AreWithinTolerance(target.data(), output.data(), target.size(), 0.0001));
 	}
@@ -147,7 +147,7 @@ public:
 		clBackProp.outputError = clOutputError;
 		clBackProp.params = clParams;
 
-		layer.cl_backPropagate(clHelper.getQueue(), clBackProp, clInputError);
+		layer.cl_backPropagate(clHelper.getQueue(), clBackProp, clInputError, 1);
 		auto result = clHelper.getData(clInputError);
 
 		Assert::IsTrue(AreWithinTolerance(result.data(), inputError.data(), result.size(), 0.0001));
@@ -179,7 +179,7 @@ public:
 		clBackProp.outputError = clOutputError;
 		clBackProp.params = nullptr;
 
-		layer.cl_calculateDerivatives(clHelper.getQueue(), clBackProp, clDvs);
+		layer.cl_calculateDerivatives(clHelper.getQueue(), clBackProp, clDvs, 1);
 		auto result = clHelper.getData(clDvs);
 
 		Assert::IsTrue(AreWithinTolerance(result.data(), dvs.data(), result.size(), 0.0001));
