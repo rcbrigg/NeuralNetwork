@@ -38,7 +38,7 @@ public:
 		auto targets = Tensor<2>({ inputs.size(), 1u });
 		std::transform(inputs.data(), inputs.end(), targets.data(), f);
 
-		network.train(inputs.section(0, 100), targets.section(0, 100));
+		network.train(inputs.section(0, 100), targets.section(0, 100), 1);
 		auto error = network.test(inputs.section(100, 200), targets.section(100, 200));
 		Assert::IsTrue(error < 0.00001f);
 	}
@@ -77,7 +77,7 @@ public:
 		auto targets = Tensor<2>({ inputs.size(), 1u });
 		std::transform(inputs.data(), inputs.end(), targets.data(), f);
 
-		network.train(inputs.section(0, 10000), targets.section(0, 10000));
+		network.train(inputs.section(0, 10000), targets.section(0, 10000), 10, 10);
 		auto error = network.test(inputs.section(10000, 20000), targets.section(10000, 20000));
 		Assert::IsTrue(error < 0.01f);
 	}

@@ -1,4 +1,4 @@
-#define WORKGROUP_SIZE (32)
+#define MAX_WORKGROUP_SIZE (256)
 
 static float square(float x) { return x * x; }
 
@@ -28,7 +28,7 @@ __kernel void calculateTotalError(__global const float* output,
 	const size_t wid = get_group_id(0);
 	const size_t lid = get_local_id(0);
 	const size_t stride = get_local_size(0);
-	__local float temp[WORKGROUP_SIZE];
+	__local float temp[MAX_WORKGROUP_SIZE];
 	temp[lid] = 0;
 
 	const __global float* outSet = output + width * wid;
@@ -40,7 +40,7 @@ __kernel void calculateTotalError(__global const float* output,
 
 	for (uint i = stride / 2; i > 0; i /= 2)
 	{
-		work_group_barrier(CLK_LOCAL_MEM_FENCE);
+		barrier(CLK_LOCAL_MEM_FENCE);
 		if (lid < i)
 		{
 			temp[lid] += temp[lid + i];

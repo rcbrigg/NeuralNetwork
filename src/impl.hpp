@@ -20,9 +20,9 @@ public:
 
 	virtual double test(const ConstTensor<> & input, const Tensor<1, const uint32_t> & targets, size_t inputCount) = 0;
 
-	virtual void train(const ConstTensor<>& inputs, const Tensor<1, const float>& targets, size_t inputCount) = 0;
+	virtual void train(const ConstTensor<>& inputs, const Tensor<1, const float>& targets, size_t inputCount, size_t batchSize, size_t epochs) = 0;
 
-	virtual void train(const ConstTensor<>& inputs, const Tensor<1, const uint32_t>& targets, size_t inputCount) = 0;
+	virtual void train(const ConstTensor<>& inputs, const Tensor<1, const uint32_t>& targets, size_t inputCount, size_t batchSize, size_t epochs) = 0;
 
 	const NetworkConfig& getConfig() const
 	{

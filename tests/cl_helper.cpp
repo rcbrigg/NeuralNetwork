@@ -14,7 +14,7 @@ Helper::Helper()
 	int error;
 	context = nn::cl::Wrapper::instance().getContext();
 	device = nn::cl::Wrapper::instance().getDeviceId();
-	queue = clCreateCommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE, &error);
+	queue = clCreateCommandQueueWithProperties(context, device, NULL, &error);
 	//auto program = nn::cl::buildProgramFromFile(__FILE__, context, device);
 	//uploadKernel = clCreateKernel(program, "upload", &error);
 	//downloadKernel = clCreateKernel(program, "download", &error);

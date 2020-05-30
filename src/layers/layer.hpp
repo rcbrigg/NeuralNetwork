@@ -12,10 +12,10 @@ public:
 
 	struct BackPropData
 	{
-		const float* input;
-		const float* output;
-		const float* outputError;
-		const float* params;
+		const float* input = nullptr;
+		const float* output = nullptr;
+		const float* outputError = nullptr;
+		const float* params = nullptr;
 	};
 
 	virtual void backPropagate(const BackPropData& data, float* inputError) const  = 0;
@@ -33,13 +33,13 @@ public:
 		uint32_t inputOffset  = 0;
 	};
 
-	virtual void cl_forward(cl_command_queue queue, cl_mem input, cl_mem params, cl_mem output, uint32_t inOffset, uint32_t outOffset, uint32_t batchSize) const = 0;
+	virtual void cl_forward(cl_command_queue queue, cl_mem input, cl_mem params, cl_mem output, uint32_t inOffset, uint32_t outOffset, uint32_t paramOffset, uint32_t batchSize) const = 0;
 
-	virtual void cl_backPropagate(cl_command_queue queue, const ClBackPropData& data, cl_mem inputError, uint32_t batchSize) const = 0;
+	virtual void cl_backPropagate(cl_command_queue queue, const ClBackPropData& data, cl_mem inputError, uint32_t paramOffset, uint32_t batchSize) const = 0;
 
-	virtual void cl_calculateDerivatives(cl_command_queue queue, const ClBackPropData& data, cl_mem derivaitves, uint32_t batchSize) const {}
+	virtual void cl_calculateDerivatives(cl_command_queue queue, const ClBackPropData& data, cl_mem derivaitves, uint32_t paramOffset, uint32_t batchSize) const {}
 
-	virtual void cl_initializeParameters(cl_command_queue queue, cl_mem params) const {}
+	virtual void cl_initializeParameters(cl_command_queue queue, cl_mem params, uint32_t offset) const {}
 
 	virtual void cl_initKernels(cl_context context, cl_device_id device) {};
 

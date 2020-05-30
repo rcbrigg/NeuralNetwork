@@ -40,7 +40,7 @@ template<typename T> size_t argMax(const T* args, size_t count)
 	return argMax;
 }
 
-inline bool AreWithinTolerance(const float* a, const float* b, size_t size, float delta)
+inline bool areWithinTolerance(const float* a, const float* b, size_t size, float delta)
 {
 	for (size_t i = 0; i < size; ++i)
 	{
@@ -50,5 +50,10 @@ inline bool AreWithinTolerance(const float* a, const float* b, size_t size, floa
 		}
 	}
 	return true;
+}
+
+inline size_t ceilDivide(size_t a, size_t b)
+{
+	return (a + b - 1) / b;
 }
 }

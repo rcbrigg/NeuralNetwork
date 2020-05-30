@@ -62,7 +62,7 @@ public:
 		lossFunc.cl_calculateError(clHelper.getQueue(), clOutput, clTarget, clError, 0, output.size(), 1);
 		auto result = clHelper.getData(clError);
 
-		Assert::IsTrue(AreWithinTolerance(error.data(), result.data(), error.size(), 0.0001));
+		Assert::IsTrue(areWithinTolerance(error.data(), result.data(), error.size(), 0.0001));
 	}
 
 	TEST_METHOD(cl_TotalError)
@@ -91,7 +91,7 @@ public:
 		lossFunc.cl_calculateTotalError(clHelper.getQueue(), clOutput, clTarget, clError, 4, 32);
 		auto result = clHelper.getData(clError);
 
-		Assert::IsTrue(AreWithinTolerance(errors.data(), result.data(), errors.size(), 0.001));
+		Assert::IsTrue(areWithinTolerance(errors.data(), result.data(), errors.size(), 0.001));
 	}
 
 	TEST_METHOD(cl_Derivatives)
@@ -109,7 +109,7 @@ public:
 		lossFunc.cl_calculateDerivatives(clHelper.getQueue(), clOutput, clTarget, clError, 0, output.size(), 1);
 		auto result = clHelper.getData(clError);
 
-		Assert::IsTrue(AreWithinTolerance(error.data(), result.data(), error.size(), 0.0001));
+		Assert::IsTrue(areWithinTolerance(error.data(), result.data(), error.size(), 0.0001));
 	}
 
 private:

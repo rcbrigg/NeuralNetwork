@@ -119,46 +119,49 @@ public:
 		return loss / double(inputCount);
 	}
 
-	void train(const ConstTensor<>& inputs, const Tensor<1, const float>& targets, size_t inputCount) final
+	void train(const ConstTensor<>& inputs, const Tensor<1, const float>& targets, size_t inputCount, size_t batchSize, size_t epochs) final
 	{
-		trainCommon(inputs, targets, inputCount);
+		trainCommon(inputs, targets, inputCount, batchSize, epochs);
 	}
 
-	void train(const ConstTensor<>& inputs, const Tensor<1, const uint32_t>& targets, size_t inputCount) final
+	void train(const ConstTensor<>& inputs, const Tensor<1, const uint32_t>& targets, size_t inputCount, size_t batchSize, size_t epochs) final
 	{
-		trainCommon(inputs, targets, inputCount);
+		trainCommon(inputs, targets, inputCount, batchSize, epochs);
 	}
+
+private:
+	using Layers = vector<unique_ptr<layer::Layer>>;
 
 	template<typename T>
-	void trainCommon(const ConstTensor<>& inputs, const Tensor<1, const T>& targets, size_t inputCount)
+	void trainCommon(const ConstTensor<>& inputs, const Tensor<1, const T>& targets, size_t inputCount, size_t batchSize, size_t epochs)
 	{
 		float* derivatives = this->optimizerData.data();
 
 		const size_t inputSize = config->inputShape.size();
 		const size_t targetSize = getTargetSize<T>();
 
-		const T* target = targets.data();
-		const float* input = inputs.data();
-
-		for (size_t i = 0 ; i < inputCount;)
+		for (size_t e = 0; e < epochs; ++e)
 		{
-			size_t batchEnd = std::min(i + config->batchSize, inputCount);
-			size_t batchSize = batchEnd - i;
-			config->optimizer->beginBatch(optimizerData.data());
+			const T* target = targets.data();
+			const float* input = inputs.data();
 
-			for (; i < batchEnd; ++i)
+			for (size_t i = 0; i < inputCount;)
 			{
-				train(input, target);
-				input += inputSize;
-				target += targetSize;
+				size_t batchEnd = std::min(i + batchSize, inputCount);
+				size_t batchSize = batchEnd - i;
+				config->optimizer->beginBatch(optimizerData.data());
+
+				for (; i < batchEnd; ++i)
+				{
+					train(input, target);
+					input += inputSize;
+					target += targetSize;
+				}
+
+				config->optimizer->update(parameters.data(), optimizerData.data(), batchSize);
 			}
-
-			config->optimizer->update(parameters.data(), optimizerData.data(), batchSize);
-		}	
+		}
 	}
-
-private:
-	using Layers = vector<unique_ptr<layer::Layer>>;
 
 	void forward(const Layers& layers,
 				 const float* input,

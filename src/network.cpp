@@ -60,25 +60,17 @@ Tensor<1, uint32_t> Network::clasify(ConstTensor<> inputs, size_t inputCount)
 	return impl->clasify(inputs, inputCount);
 }
 
-void Network::train(ConstTensor<> inputs, ConstTensor<> targets, size_t inputCount, uint32_t epochs)
+void Network::train(ConstTensor<> inputs, ConstTensor<> targets, size_t inputCount, uint32_t epochs, size_t batchSize)
 {
 	checkLossFunction();
 	checkOptimizer();
-
-	for (uint32_t i = 0; i < epochs; ++i)
-	{
-		impl->train(inputs, targets, inputCount);
-	}
+	impl->train(inputs, targets, inputCount, batchSize, epochs);
 }
 
-void Network::train(ConstTensor<> inputs, Tensor<1, const uint32_t> targets, size_t inputCount, uint32_t epochs)
+void Network::train(ConstTensor<> inputs, Tensor<1, const uint32_t> targets, size_t inputCount, uint32_t epochs, size_t batchSize)
 {
 	checkOptimizer();
-
-	for (uint32_t i = 0; i < epochs; ++i)
-	{
-		impl->train(inputs, targets, inputCount);
-	}
+	impl->train(inputs, targets, inputCount, batchSize, epochs);
 }
 
 double Network::test(ConstTensor<> inputs, ConstTensor<> targets, size_t inputCount)
@@ -193,11 +185,6 @@ void NetworkArgs::setLossMse()
 {
 	auto loss = std::make_unique<loss::Mse>();
 	data->lossFunc = move(loss);
-}
-
-void NetworkArgs::setBatchSize(uint32_t size)
-{
-	data->batchSize = size;
 }
 
 void NetworkArgs::enableOpenCLAcceleration(bool enable)

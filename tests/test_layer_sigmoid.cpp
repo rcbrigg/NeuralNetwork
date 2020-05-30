@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "..\src\layers\sigmoid.hpp"
+#include "..\utils\utils.hpp"
 
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 using namespace nn;
@@ -40,9 +41,7 @@ public:
 		Tensor<> inputError(input.size());
 		nn::layer::Layer::BackPropData backProp;
 		backProp.input = input.data();
-		backProp.output = nullptr;
 		backProp.outputError = outputError.data();
-		backProp.params = nullptr;
 		auto layer = nn::layer::Sigmoid(input.size());
 		layer.backPropagate(backProp, inputError.data());
 		for (size_t i = 0; i < input.size(); ++i)
@@ -50,48 +49,56 @@ public:
 			Assert::AreEqual(layer.sigmoidPrime(input[i]) * outputError[i], inputError[i]);
 		}
 	}
-
 	TEST_METHOD(cl_ForwardTest)
 	{
-		Tensor<> input = { 0.0f, -1.0f, 1.0f };
-		auto clInput = clHelper.makeBuffer(input);
+		auto input = nn::uniformRandomTensor(100, -5.f, 5.f).as<2>({ 5, 20 });
+		auto target = Tensor<2>(input.shape());
+		auto clInput = clHelper.makeBuffer(input.flat());
 		auto clOutput = clHelper.makeBuffer(input.size());
 
-		auto layer = nn::layer::Sigmoid(input.size());
+		auto layer = nn::layer::Sigmoid(input.shape().size() / input.length());
 		layer.cl_initKernels(clHelper.getContext(), clHelper.getDevice());
-		layer.cl_forward(clHelper.getQueue(), clInput, nullptr, clOutput, 0, 0, 1);
+		layer.cl_forward(clHelper.getQueue(), clInput, nullptr, clOutput, 0, 0, 0, input.length());
 
-		auto output = clHelper.getData(clOutput);
-		for (size_t i = 0; i < input.size(); ++i)
+		for (size_t i = 0; i < input.length(); i++)
 		{
-			Assert::AreEqual(layer.sigmoid(input[i]), output[i]);
+			layer.forward(input[i].data(), nullptr, target[i].data());
 		}
+		auto output = clHelper.getData(clOutput);
+		Assert::IsTrue(areWithinTolerance(target.data(), output.data(), target.size(), 0.0001));
 	}
-
 	TEST_METHOD(cl_BackPropagateTest)
 	{
-		Tensor<> input = { 0.0f, -1.0f, 1.0f };
-		Tensor<> outputError = { 1.0f, 2.0f, 3.0f };
-		auto clInput = clHelper.makeBuffer(input);
-		auto clOutputError = clHelper.makeBuffer(outputError);
-		auto clInputError = clHelper.makeBuffer(input.size());
-		nn::layer::Layer::ClBackPropData backProp;
-		backProp.input = clInput;
-		backProp.output = nullptr;
-		backProp.outputError = clOutputError;
-		backProp.params = nullptr;
+		auto input = nn::uniformRandomTensor(100, -5.f, 5.f).as<2>({ 5, 20 });
+		auto inputError = Tensor<2>(input.shape());
+		auto outputError = nn::uniformRandomTensor(100, -5.f, 5.f).as<2>(inputError.shape());
 
-		auto layer = nn::layer::Sigmoid(input.size());
+		auto layer = nn::layer::Sigmoid(input.size() / input.length());
+
+		auto clInput = clHelper.makeBuffer(input.flat());
+		auto clInputError = clHelper.makeBuffer(inputError.size());
+		auto clOutputError = clHelper.makeBuffer(outputError.flat());
+
 		layer.cl_initKernels(clHelper.getContext(), clHelper.getDevice());
-		layer.cl_backPropagate(clHelper.getQueue(), backProp, clInputError, 1);
 
-		auto inputError = clHelper.getData(clInputError);
-		for (size_t i = 0; i < input.size(); ++i)
+		nn::layer::Layer::ClBackPropData clBackProp;
+		clBackProp.outputError = clOutputError;
+		clBackProp.input = clInput;
+		layer.cl_backPropagate(clHelper.getQueue(), clBackProp, clInputError, 0, input.length());
+
+		nn::layer::Layer::BackPropData backProp;
+
+		for (size_t i = 0; i < inputError.shape().length(); i++)
 		{
-			Assert::AreEqual(layer.sigmoidPrime(input[i]) * outputError[i], inputError[i]);
+			backProp.input = input[i].data();
+			backProp.outputError = outputError[i].data();
+			layer.backPropagate(backProp, inputError[i].data());
 		}
-	}
 
+		auto result = clHelper.getData(clInputError);
+
+		Assert::IsTrue(areWithinTolerance(result.data(), inputError.data(), result.size(), 0.0001));
+	}
 private:
 	::cl::Helper clHelper;
 };

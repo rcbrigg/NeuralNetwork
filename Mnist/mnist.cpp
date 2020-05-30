@@ -1,6 +1,7 @@
 #include "..\include\network.hpp"
 #include "mnist_loader.hpp"
 #include <iostream>
+#include <chrono>
 
 using namespace nn;
 using namespace std;
@@ -21,7 +22,11 @@ auto makeNetwork(Shape<> inputShape, size_t outputSize)
 {
 	NetworkArgs args;
 	args.setInputShape(inputShape);
-	args.addLayerDense(30);
+	args.addLayerDense(64);
+	args.addLayerSigmoid();
+	args.addLayerDense(32);
+	args.addLayerSigmoid();
+	args.addLayerDense(32);
 	args.addLayerSigmoid();
 	args.addLayerDense(outputSize);
 	args.addLayerSigmoid();
@@ -32,7 +37,6 @@ auto makeNetwork(Shape<> inputShape, size_t outputSize)
 
 
 	args.setOptimizerGradientDescent(3.0f);
-	args.setBatchSize(30);
 	return Network(move(args));
 }
 
@@ -52,12 +56,17 @@ int main(int argc, char* argv[])
 
 	auto network = makeNetwork(data.trainingData.shape().slice(), 10);
 
+
 	cout << "Training network... ";
-	network.train(data.trainingData, data.trainingLabels);
-	//network.train(data.trainingData, labelToVec(data.trainingLabels));
-	
-	cout << "Done!" << endl;
-	//auto accuracy = (float)network.test(data.testData.section(0, 1000), labelToVec(data.testLabels.section(0, 1000)));
+
+	auto start = std::chrono::high_resolution_clock::now();
+
+	network.train(data.trainingData, data.trainingLabels, 8, 20);
+	//network.forward(data.trainingData);
+
+	std::chrono::duration<float> elapsed = std::chrono::high_resolution_clock::now() - start;
+	cout << "Done! (" << elapsed.count() << " seconds)" << endl;
+
 	auto accuracy = (float)network.test(data.testData.section(0, 1000), data.testLabels.section(0, 1000));
 
 	cout << "accuracy: " << accuracy << endl;

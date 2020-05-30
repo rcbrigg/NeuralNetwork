@@ -40,7 +40,9 @@ public:
 		// Get CL objects
 		context = cl::Wrapper::instance().getContext();
 		device = cl::Wrapper::instance().getDeviceId();
-		queue = clCreateCommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE, &error);
+
+		cl_queue_properties props[] = { CL_QUEUE_PROPERTIES, CL_QUEUE_PROFILING_ENABLE, 0 };
+		queue = clCreateCommandQueueWithProperties(context, device, props, &error);
 
 		if (error != CL_SUCCESS)
 		{
@@ -61,30 +63,20 @@ public:
 		parameters = clCreateBuffer(context, CL_MEM_READ_WRITE, parametersSize * sizeof(float), NULL, &error);
 		derivatives = clCreateBuffer(context, CL_MEM_READ_WRITE, parametersSize * sizeof(float), NULL, &error);
 
-		size_t paramOffset = 0;
+		uint32_t paramOffset = 0;
+		const size_t height = maxBatchSize;
 
 		// Create sub-buffers for each layer
 		for (const auto& layer : config->layers)
 		{
-			size_t size = layer->getParameterCount() * sizeof(float);
-			size_t range[2] = { paramOffset, size };
-			paramOffset += size;
-
-			if (size != 0)
-			{
-				layerParams.push_back(clCreateSubBuffer(parameters, CL_MEM_READ_WRITE, CL_BUFFER_CREATE_TYPE_REGION, range, &error));
-				layerDerivatives.push_back(clCreateSubBuffer(derivatives, CL_MEM_READ_WRITE, CL_BUFFER_CREATE_TYPE_REGION, range, &error));
-			}
-			else
-			{
-				layerParams.push_back(nullptr);
-				layerDerivatives.push_back(nullptr);
-			}
-			size_t alignedOutputSize = layer->getOutputSize() * sizeof(float);
+			paramOffsets.push_back(paramOffset);
+			paramOffset  += layer->getParameterCount();
+			
+			size_t alignedOutputSize = layer->getOutputSize() * sizeof(float) * height;
 			layerError.push_back(clCreateBuffer(context, CL_MEM_READ_WRITE, alignedOutputSize, NULL, &error));
 			layerOutputs.push_back(clCreateBuffer(context, CL_MEM_READ_WRITE, alignedOutputSize, NULL, &error));
 
-			layer->cl_initializeParameters(queue, layerParams.back());
+			layer->cl_initializeParameters(queue, parameters, paramOffsets.back());
 		}
 
 		if (config->optimizer)
@@ -165,7 +157,7 @@ public:
 
 		//auto data = clEnqueueMapBuffer(queue, targetBuffer, CL_TRUE, CL_MAP_READ, 0, 100 * sizeof(float), 0, NULL, NULL, &error);
 		//auto data1 = clEnqueueMapBuffer(queue, outputBuffer, CL_TRUE, CL_MAP_READ, 0, 100 * sizeof(float), 0, NULL, NULL, &error);
-		//auto data2 = clEnqueueMapBuffer(queue, parameters, CL_TRUE, CL_MAP_READ, 0, 2 * sizeof(float), 0, NULL, NULL, &error);
+		//auto data2 = clEnqueueMapBuffer(queue, parameters, CL_TRUE, CL_MAP_READ, 0, 11 * sizeof(float), 0, NULL, NULL, &error);
 		config->lossFunc->cl_calculateTotalError(queue, outputBuffer, targetBuffer, errorBuffer, inputCount, config->outputShape.size());
 
 		Tensor<> errors(inputCount);
@@ -182,14 +174,14 @@ public:
 		return loss / double(inputCount);
 	}
 
-	void train(const ConstTensor<>& inputs, const Tensor<1, const float>& targets, size_t inputCount) final
+	void train(const ConstTensor<>& inputs, const Tensor<1, const float>& targets, size_t inputCount, size_t batchSize, size_t epochs) final
 	{
-		trainCommon<false>(inputs.data(), targets.data(), inputCount);
+		trainCommon<false>(inputs.data(), targets.data(), inputCount, batchSize, epochs);
 	}
 
-	void train(const ConstTensor<>& inputs, const Tensor<1, const uint32_t>& targets, size_t inputCount) final
+	void train(const ConstTensor<>& inputs, const Tensor<1, const uint32_t>& targets, size_t inputCount, size_t batchSize, size_t epochs) final
 	{
-		trainCommon<true>(inputs.data(), targets.data(), inputCount);
+		trainCommon<true>(inputs.data(), targets.data(), inputCount, batchSize, epochs);
 	}
 
 private:
@@ -223,7 +215,7 @@ private:
 		{
 			buffer = clCreateBuffer(context, CL_MEM_READ_WRITE, allocSize, NULL, &error);
 		}
-		
+
 		if (error) throw std::exception("Failed to allocate memory.");
 
 		if (data)
@@ -238,14 +230,15 @@ private:
 		createBuffer(inputBuffer, (void*)input, config->inputShape.size(), inputCount);
 		createBuffer(outputBuffer, nullptr, config->outputShape.size(), inputCount);
 
-		for (size_t i = 0; i < inputCount; ++i)
+		for (size_t i = 0; i < inputCount; i += maxBatchSize)
 		{
-			forward(inputBuffer, outputBuffer, i * config->inputShape.size(), i * config->outputShape.size());
+			size_t thisBatchSize = std::min(maxBatchSize, inputCount - i);
+			forward(inputBuffer, outputBuffer, i * config->inputShape.size(), i * config->outputShape.size(), thisBatchSize);
 		}
 	}
 
 	template<bool Classify>
-	void trainCommon(const void* inputs, const void* targets, size_t inputCount) 
+	void trainCommon(const void* inputs, const void* targets, size_t inputCount, size_t batchSize, size_t epochs)
 	{
 		createBuffer(inputBuffer, (void*)inputs, config->inputShape.size(), inputCount);
 		createBuffer(outputBuffer, nullptr, config->outputShape.size(), inputCount);
@@ -253,17 +246,29 @@ private:
 
 		config->optimizer->cl_beginTraining(queue, derivatives);
 
-		for (size_t i = 0; i < inputCount;)
+		for (size_t e = 0; e < epochs; ++e)
 		{
-			size_t batchEnd = std::min(i + config->batchSize, inputCount);
-			size_t batchSize = batchEnd - i;
-			
-			for (; i < batchEnd; ++i)
+			for (size_t i = 0; i < inputCount;)
 			{
-				train<Classify>(inputBuffer, targetBuffer, i);
-			}
+				size_t batchEnd = std::min(i + batchSize, inputCount);
+				size_t batchSize = batchEnd - i;
 
-			config->optimizer->cl_update(queue, parameters, derivatives, batchSize);
+				for (; i < batchEnd;)
+				{
+					size_t thisBatchSize = std::min(maxBatchSize, batchEnd - i);
+					train<Classify>(inputBuffer, targetBuffer, i, thisBatchSize);
+					i += thisBatchSize;
+				}
+
+				config->optimizer->cl_update(queue, parameters, derivatives, batchSize);
+			}
+		}
+
+		auto error = clFinish(queue);
+
+		if (error != CL_SUCCESS)
+		{
+			throw std::exception();
 		}
 	}
 
@@ -295,15 +300,20 @@ private:
 		error |= clSetKernelArg(classifyKernel, 1, sizeof(cl_mem), &tempBuffer);
 		error |= clSetKernelArg(classifyKernel, 2, sizeof(outputStride), &outputStride);
 		error |= clSetKernelArg(classifyKernel, 3, sizeof(outputSize), &outputSize);
-		const size_t globalSize = cl::DEFAULT_WORKGROUP_SIZE * classifications.size();
+		const size_t globalSize = cl::workGroupSize * classifications.size();
 
-		error | clEnqueueNDRangeKernel(queue, classifyKernel, 1, NULL, &globalSize, &cl::DEFAULT_WORKGROUP_SIZE, 0, NULL, NULL);
+		error |= clEnqueueNDRangeKernel(queue, classifyKernel, 1, NULL, &globalSize, &cl::workGroupSize, 0, NULL, NULL);
 
-		clFlush(queue);
+		error |= clFlush(queue);
 		auto data = clEnqueueMapBuffer(queue, tempBuffer, CL_TRUE, CL_MAP_READ, 0, classifications.size() * sizeof(uint32_t), 0, NULL, NULL, &error);
-		clEnqueueUnmapMemObject(queue, tempBuffer, data, 0, NULL, NULL);
+		error |= clEnqueueUnmapMemObject(queue, tempBuffer, data, 0, NULL, NULL);
 
-		clReleaseMemObject(tempBuffer);
+		error |= clReleaseMemObject(tempBuffer);
+
+		if (error != CL_SUCCESS)
+		{
+			throw std::exception();
+		}
 	}
 
 	void releaseBuffers()
@@ -315,80 +325,83 @@ private:
 
 	using Layers = vector<unique_ptr<layer::Layer>>;
 
-	void forward(cl_mem input, cl_mem output, uint32_t inputOffset, uint32_t outputOffset)
+	void forward(cl_mem input, cl_mem output, uint32_t inputOffset, uint32_t outputOffset, size_t batchSize)
 	{
 		cl_mem layerInput = input;
 		const auto& layers = config->layers;
 
 		for (size_t i = 0; i < layers.size() - 1; ++i)
 		{
-			layers[i]->cl_forward(queue, layerInput, layerParams[i], layerOutputs[i], inputOffset, 0, 1);
+			layers[i]->cl_forward(queue, layerInput, parameters, layerOutputs[i], inputOffset, 0, paramOffsets[i], batchSize);
 			layerInput = layerOutputs[i];
 			inputOffset = 0;
 		}
 
-		layers.back()->cl_forward(queue, layerInput, layerParams.back(), output, inputOffset, outputOffset, 1);
+		layers.back()->cl_forward(queue, layerInput, parameters, output, inputOffset, outputOffset, paramOffsets.back(), batchSize);
 	}
 
 	template<bool CLASSIFY>
-	void train(cl_mem input, cl_mem target, size_t index)
+	void train(cl_mem input, cl_mem target, size_t index, size_t batchSize)
 	{
 		const size_t inputOffset = index * config->inputShape.size();
 
-		forward(input, layerOutputs.back(), inputOffset, 0);
+		forward(input, layerOutputs.back(), inputOffset, 0, batchSize);
 
 		const size_t layerCount = config->layers.size();
 
-		calculateOutputDerivatives<CLASSIFY>(layerOutputs.back(), target, config->outputShape.size(), layerError.back(), index);
-
+		calculateOutputDerivatives<CLASSIFY>(layerOutputs.back(), target, config->outputShape.size(), layerError.back(), index, batchSize);
 		layer::Layer::ClBackPropData data;
+		data.params = parameters;
 
 		for (size_t i = layerCount - 1; i > 0; --i)
 		{
 			layer::Layer& layer = *config->layers[i];
 
-			cl_mem inputError = layerError[i - 1];			
+			cl_mem inputError = layerError[i - 1];
 			data.input = layerOutputs[i - 1];
-			data.params = layerParams[i];
 			data.output = layerOutputs[i];
 			data.outputError = layerError[i];
-			layer.cl_backPropagate(queue, data, inputError, 1);
-			layer.cl_calculateDerivatives(queue, data, layerDerivatives[i], 1);
+			layer.cl_backPropagate(queue, data, inputError, paramOffsets[i], batchSize);
+			layer.cl_calculateDerivatives(queue, data, derivatives, paramOffsets[i], batchSize);
 		}
 
 		data.input = input;
-		data.params = layerParams.front();
 		data.output = layerOutputs.front();
 		data.outputError = layerError.front();
 		data.inputOffset = inputOffset;
-		config->layers[0]->cl_calculateDerivatives(queue, data, layerDerivatives.front(), 1);
+		config->layers[0]->cl_calculateDerivatives(queue, data, derivatives, paramOffsets.front(), batchSize);
 	}
 
 	template<bool CLASSIFY>
-	void calculateOutputDerivatives(cl_mem output, cl_mem target, uint32_t outputSize, cl_mem outputError, uint32_t index) const
+	void calculateOutputDerivatives(cl_mem output, cl_mem target, uint32_t outputSize, cl_mem outputError, uint32_t first, size_t batchSize) const
 	{
-		uint32_t size = outputSize * 1;
+		uint32_t size = outputSize * batchSize;
 		size_t globalSize = cl::alignSize(size);
 
 		int error = clSetKernelArg(softmaxErrorKernel, 0, sizeof(cl_mem), &output);
 		error |= clSetKernelArg(softmaxErrorKernel, 1, sizeof(cl_mem), &target);
 		error |= clSetKernelArg(softmaxErrorKernel, 2, sizeof(cl_mem), &outputError);
-		error |= clSetKernelArg(softmaxErrorKernel, 3, sizeof(index), &index);
+		error |= clSetKernelArg(softmaxErrorKernel, 3, sizeof(first), &first);
 		error |= clSetKernelArg(softmaxErrorKernel, 4, sizeof(outputSize), &outputSize);
 		error |= clSetKernelArg(softmaxErrorKernel, 5, sizeof(size), &size);
-		
-		error |= clEnqueueNDRangeKernel(queue, softmaxErrorKernel, 1, NULL, &globalSize, &cl::DEFAULT_WORKGROUP_SIZE, 0, NULL, NULL);
+
+		error |= clEnqueueNDRangeKernel(queue, softmaxErrorKernel, 1, NULL, &globalSize, &cl::workGroupSize, 0, NULL, NULL);
+
+		if (error != CL_SUCCESS)
+		{
+			throw std::exception();
+		}
 	}
 
 	template<>
-	void calculateOutputDerivatives<false>(cl_mem output, cl_mem target, uint32_t outputSize, cl_mem outputError, uint32_t index) const
+	void calculateOutputDerivatives<false>(cl_mem output, cl_mem target, uint32_t outputSize, cl_mem outputError, uint32_t first, size_t batchSize) const
 	{
 		return config->lossFunc->cl_calculateDerivatives(queue,
 														 output,
 														 target,
 														 outputError,
-														 index * config->outputShape.size(),
-														 1,
+														 first * config->outputShape.size(),
+														 batchSize,
 														 outputSize);
 	}
 
@@ -422,10 +435,7 @@ private:
 	// error of each layer output during backpropagation
 	std::vector<cl_mem> layerError;
 
-	// parameter gradients of each layer
-	std::vector<cl_mem> layerDerivatives;
-
-	std::vector<cl_mem> layerParams;
+	std::vector<uint32_t> paramOffsets;
 
 	// outputs of final layer
 	Tensor<> outputs;
@@ -448,5 +458,7 @@ private:
 	cl_kernel classifyKernel;
 
 	cl_kernel softmaxErrorKernel;
+
+	static const size_t maxBatchSize = 128;
 };
 }

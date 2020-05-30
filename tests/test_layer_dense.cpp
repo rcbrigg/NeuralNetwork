@@ -107,82 +107,85 @@ public:
 
 	TEST_METHOD(cl_ForwardTest)
 	{
-		auto input = nn::uniformRandomTensor(100, -5.f, 5.f);
-		auto target = Tensor<>(50);
-		auto layer = nn::layer::Dense(input.size(), target.size());
+		auto input = nn::uniformRandomTensor(100, -5.f, 5.f).as<2>({ 5, 20 });
+		auto target = Tensor<2>({ input.length(), 10 });
+		auto layer = nn::layer::Dense(20, 10);
 		auto params = nn::uniformRandomTensor(layer.getParameterCount(), -5.f, 5.f);
-		auto clInput = clHelper.makeBuffer(input);
+		auto clInput = clHelper.makeBuffer(input.flat());
 		auto clOutput = clHelper.makeBuffer(target.size());
 		auto clParams = clHelper.makeBuffer(params);
 		layer.cl_initKernels(clHelper.getContext(), clHelper.getDevice());
-		layer.forward(input.data(), params.data(), target.data());
-		layer.cl_forward(clHelper.getQueue(), clInput, clParams, clOutput, 0, 0, 1);
+		for (size_t i = 0; i < input.length(); i++)
+		{
+			layer.forward(input[i].data(), params.data(), target[i].data());
+		}
+
+		layer.cl_forward(clHelper.getQueue(), clInput, clParams, clOutput, 0, 0, 0, input.length());
 		auto output = clHelper.getData(clOutput);
-		Assert::IsTrue(AreWithinTolerance(target.data(), output.data(), target.size(), 0.0001));
+		Assert::IsTrue(areWithinTolerance(target.data(), output.data(), target.size(), 0.0001));
 	}
 
 	TEST_METHOD(cl_BackPropagateTest)
 	{
-		auto inputError = Tensor<>(100);
-		auto outputError = nn::uniformRandomTensor(50, -5.f, 5.f);
+		auto inputError = Tensor<2>({ 5, 20 });
+		auto outputError = nn::uniformRandomTensor(50, -5.f, 5.f).as<2>({ 5, 10 });
 		
-		auto layer = nn::layer::Dense(inputError.size(), outputError.size());
+		auto layer = nn::layer::Dense(20, 10);
 		auto params = nn::uniformRandomTensor(layer.getParameterCount(), -5.f, 5.f);
 
 		auto clInputError = clHelper.makeBuffer(inputError.size());
-		auto clOutputError = clHelper.makeBuffer(outputError);
+		auto clOutputError = clHelper.makeBuffer(outputError.flat());
 		auto clParams = clHelper.makeBuffer(params);
 		layer.cl_initKernels(clHelper.getContext(), clHelper.getDevice());
 
 		nn::layer::Layer::BackPropData backProp;
-		backProp.input = nullptr;
-		backProp.output = nullptr;
-		backProp.outputError = outputError.data();
 		backProp.params = params.data();
-		layer.backPropagate(backProp, inputError.data());
+
+		for (size_t i = 0; i < inputError.length(); i++)
+		{
+			backProp.outputError = outputError[i].data();
+			layer.backPropagate(backProp, inputError[i].data());
+		}
 
 		nn::layer::Layer::ClBackPropData clBackProp;
-		clBackProp.input = nullptr;
-		clBackProp.output = nullptr;
 		clBackProp.outputError = clOutputError;
 		clBackProp.params = clParams;
 
-		layer.cl_backPropagate(clHelper.getQueue(), clBackProp, clInputError, 1);
+		layer.cl_backPropagate(clHelper.getQueue(), clBackProp, clInputError, 0, inputError.length());
 		auto result = clHelper.getData(clInputError);
 
-		Assert::IsTrue(AreWithinTolerance(result.data(), inputError.data(), result.size(), 0.0001));
+		Assert::IsTrue(areWithinTolerance(result.data(), inputError.data(), result.size(), 0.0001));
 	}
 
 	TEST_METHOD(cl_DerivativesTest)
 	{
-		auto input = nn::uniformRandomTensor(100, -5.f, 5.f);
-		auto outputError = nn::uniformRandomTensor(50, -5.f, 5.f);
-		auto layer = nn::layer::Dense(input.size(), outputError.size());
+		auto input = nn::uniformRandomTensor(100, -5.f, 5.f).as<2>({ 5, 20 });
+		auto outputError = nn::uniformRandomTensor(50, -5.f, 5.f).as<2>({ 5, 10 });
+		auto layer = nn::layer::Dense(20, 10);
 		auto dvs = Tensor<>(layer.getParameterCount());
 		std::memset(dvs.data(), 0, sizeof(float) * dvs.size());
 		
-		auto clInput = clHelper.makeBuffer(input);
-		auto clOutputError = clHelper.makeBuffer(outputError);
+		auto clInput = clHelper.makeBuffer(input.flat());
+		auto clOutputError = clHelper.makeBuffer(outputError.flat());
 		auto clDvs = clHelper.makeBuffer(dvs);
 		layer.cl_initKernels(clHelper.getContext(), clHelper.getDevice());
 
 		nn::layer::Layer::BackPropData backProp;
-		backProp.input = input.data();
-		backProp.output = nullptr;
-		backProp.outputError = outputError.data();
-		backProp.params = nullptr;
-		layer.calculateDerivatives(backProp, dvs.data());
-
+		for (size_t i = 0; i < input.length(); i++)
+		{
+			backProp.input = input[i].data();
+			backProp.outputError = outputError[i].data();
+			layer.calculateDerivatives(backProp, dvs.data());
+		}
+		
 		nn::layer::Layer::ClBackPropData clBackProp;
 		clBackProp.input = clInput;
-		clBackProp.output = nullptr;
 		clBackProp.outputError = clOutputError;
-		clBackProp.params = nullptr;
 
-		layer.cl_calculateDerivatives(clHelper.getQueue(), clBackProp, clDvs, 1);
+		layer.cl_calculateDerivatives(clHelper.getQueue(), clBackProp, clDvs, 0, input.length());
 		auto result = clHelper.getData(clDvs);
 
-		Assert::IsTrue(AreWithinTolerance(result.data(), dvs.data(), result.size(), 0.0001));
+		Assert::IsTrue(areWithinTolerance(result.data(), dvs.data(), result.size(), 0.0001));
 	}
 
 	TEST_METHOD(cl_InitTest)
@@ -190,7 +193,7 @@ public:
 		auto layer = nn::layer::Dense(5, 8);
 		auto clParams = clHelper.makeBuffer(layer.getParameterCount());
 		layer.cl_initKernels(clHelper.getContext(), clHelper.getDevice());
-		layer.cl_initializeParameters(clHelper.getQueue(), clParams);
+		layer.cl_initializeParameters(clHelper.getQueue(), clParams, 0);
 		auto output = clHelper.getData(clParams);
 	}
 

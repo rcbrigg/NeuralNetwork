@@ -59,7 +59,7 @@ public:
 		size_t globalSize = cl::alignSize(size);
 		error = clSetKernelArg(initKernel, 0, sizeof(cl_mem), &derivatives);
 		error = clSetKernelArg(initKernel, 1, sizeof(size), &size);
-		error |= clEnqueueNDRangeKernel(queue, initKernel, 1, NULL, &globalSize, &cl::DEFAULT_WORKGROUP_SIZE, 0, NULL, NULL);
+		error |= clEnqueueNDRangeKernel(queue, initKernel, 1, NULL, &globalSize, &cl::workGroupSize, 0, NULL, NULL);
 
 		if (error != CL_SUCCESS)
 		{
@@ -72,13 +72,13 @@ public:
 		const float scale = learningRate / batchSize;
 		uint32_t size = parameterCount;
 		size_t globalSize = cl::alignSize(size);
-
 		int error;
+		
 		error = clSetKernelArg(updateKernel, 0, sizeof(cl_mem), &parameters);
 		error |= clSetKernelArg(updateKernel, 1, sizeof(cl_mem), &derivatives);
 		error |= clSetKernelArg(updateKernel, 2, sizeof(scale), &scale);
 		error |= clSetKernelArg(updateKernel, 3, sizeof(size), &size);
-		error |= clEnqueueNDRangeKernel(queue, updateKernel, 1, NULL, &globalSize, &cl::DEFAULT_WORKGROUP_SIZE, 0, NULL, NULL);
+		error |= clEnqueueNDRangeKernel(queue, updateKernel, 1, NULL, &globalSize, &cl::workGroupSize, 0, NULL, NULL);
 
 		
 		if (error != CL_SUCCESS)

@@ -33,19 +33,19 @@ public:
     }
 
     // For normal training. U should be float or const float.
-	template<size_t N, typename T, typename U> void train(const Tensor<N, T> inputs, const Tensor<2, U> targets, uint32_t epochs = 1)
+	template<size_t N, typename T, typename U> void train(const Tensor<N, T> inputs, const Tensor<2, U> targets, uint32_t batchSize = 32, uint32_t epochs = 1)
 	{		
         static_assert(N > 1, "Expected input for train() to have at least 2 dimensions. Note: can use Tensor::as({1, n})");
         checkTargetShape(inputs.shape(), targets.shape());
-		train(inputs.flat(), targets.flat(), inputs.length(), epochs);
+		train(inputs.flat(), targets.flat(), inputs.length(), epochs, batchSize);
 	}
 
     // For classification training. U should be uint32_t or const uint32_t.
-    template<size_t N, typename T, typename U> void train(const Tensor<N, T> inputs, const Tensor<1, U> targets, uint32_t epochs = 1)
+    template<size_t N, typename T, typename U> void train(const Tensor<N, T> inputs, const Tensor<1, U> targets, uint32_t batchSize = 32, uint32_t epochs = 1)
     {
         static_assert(N > 1, "Expected input for train() to have at least 2 dimensions. Note: can use Tensor::as({1, n})");
         checkLabels(inputs.shape(), targets.shape());
-        train(inputs.flat(), targets.flat(), inputs.length(), epochs);
+        train(inputs.flat(), targets.flat(), inputs.length(), epochs, batchSize);
     }
 
     template<size_t N, typename T, typename U> double test(const Tensor<N, T>& inputs, const Tensor<2, U>& targets)
@@ -65,8 +65,8 @@ private:
 
 	Tensor<> forward(ConstTensor<> inputs, size_t inputCount);
     Tensor<1, uint32_t> clasify(ConstTensor<> inputs, size_t inputCount);
-	void train(ConstTensor<> inputs, ConstTensor<> targets, size_t inputCount, uint32_t epochs);
-    void train(ConstTensor<> inputs, Tensor<1, const uint32_t> targets, size_t inputCount, uint32_t epochs);
+	void train(ConstTensor<> inputs, ConstTensor<> targets, size_t inputCount, uint32_t epochs, size_t batchSize);
+    void train(ConstTensor<> inputs, Tensor<1, const uint32_t> targets, size_t inputCount, uint32_t epochs, size_t batchSize);
     double test(ConstTensor<> inputs, ConstTensor<> targets, size_t inputCount);
     double test(ConstTensor<> inputs, Tensor<1, const uint32_t> targets, size_t inputCount);
 	void checkInputShape(Shape<> inputShape) const;
@@ -106,8 +106,6 @@ public:
     void setOptimizerAdam();
 
     void setLossMse();
-
-    void setBatchSize(uint32_t size);
 
     void enableOpenCLAcceleration(bool enable);
 

@@ -58,44 +58,44 @@ inline cl_program buildProgramFromFile(const char* fileName, cl_context context,
     return program;
 }
 
-static const size_t DEFAULT_WORKGROUP_SIZE = 32;
+static const size_t workGroupSize = 32;
 
 inline size_t alignSize(size_t s)
 {
-    return (s + 0x1F) & ~0x1F;
+    return (s + (workGroupSize-1)) & ~(workGroupSize-1);
 }
 
-inline size_t getStride(size_t s)
-{
-    if (s > 32)
-    {
-        return (s + 0x1F) & ~0x1F;
-    }
-    else if (s > 16)
-    {
-        return 32;
-    }
-    else if (s > 8)
-    {
-        return 16;
-    }
-    else if (s > 4)
-    {
-        return 8;
-    }
-    else if (s > 2)
-    {
-        return 4;
-    }
-    else if (s > 1)
-    {
-        return 2;
-    }
-    else
-    {
-        return 1;
-    }
-}
+//inline size_t getStride(size_t s)
+//{
+//    if (s > 32)
+//    {
+//        return (s + 0x1F) & ~0x1F;
+//    }
+//    else if (s > 16)
+//    {
+//        return 32;
+//    }
+//    else if (s > 8)
+//    {
+//        return 16;
+//    }
+//    else if (s > 4)
+//    {
+//        return 8;
+//    }
+//    else if (s > 2)
+//    {
+//        return 4;
+//    }
+//    else if (s > 1)
+//    {
+//        return 2;
+//    }
+//    else
+//    {
+//        return 1;
+//    }
+//}
 
 class Wrapper
 {
