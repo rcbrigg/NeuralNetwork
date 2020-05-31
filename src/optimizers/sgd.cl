@@ -8,11 +8,3 @@ __kernel void update(__global float* params, __global float* deltas, float scale
 		deltas[i] = 0;
 	}
 }
-
-// TODO: replace with clear
-__kernel void init(__global float* params, uint paramCount)
-{
-	const size_t gid = get_global_id(0);
-	if (gid < paramCount)
-		params[gid] = 0;
-}

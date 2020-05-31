@@ -25,15 +25,13 @@ public:
 		memset(data, 0, sizeof(float) * parameterCount);
 	}
 
-	void update(float* params, const float* data, size_t batchSize) final
+	void update(float* params, const float* dericatives, size_t batchSize) final
 	{
-		const size_t size = parameterCount;
 		const float scale = learningRate / batchSize;
-		const float* derivative = data;
 
 		for (size_t i = 0; i < parameterCount; ++i)
 		{
-			params[i] -= scale * derivative[i];
+			params[i] -= scale * dericatives[i];
 		}
 	}
 
@@ -43,10 +41,10 @@ public:
 
 		int error;
 		updateKernel = clCreateKernel(program, "update", &error);
-		initKernel = clCreateKernel(program, "init", &error);
+
 		if (error != CL_SUCCESS)
 		{
-			throw std::exception("Unexpected error while creating kernel(s) for optimizer::sgd.");
+			throw std::exception("Unexpected error while creating kernel(s) for optimizer::adam.");
 		}
 
 		parameterCount = paramCount;
@@ -54,16 +52,12 @@ public:
 
 	void cl_beginTraining(cl_command_queue queue, cl_mem derivatives) final
 	{
-		int error;
-		uint32_t size = parameterCount;
-		size_t globalSize = cl::alignSize(size);
-		error = clSetKernelArg(initKernel, 0, sizeof(cl_mem), &derivatives);
-		error = clSetKernelArg(initKernel, 1, sizeof(size), &size);
-		error |= clEnqueueNDRangeKernel(queue, initKernel, 1, NULL, &globalSize, &cl::workGroupSize, 0, NULL, NULL);
+		float zero = 0.f;
+		int error = clEnqueueFillBuffer(queue, derivatives, &zero, sizeof(zero), 0, parameterCount * sizeof(float), 0, NULL, NULL);
 
 		if (error != CL_SUCCESS)
 		{
-			throw std::exception("Unexpected error in optimizer::sgd::cl_beginBatch()");
+			throw std::exception("Unexpected error in optimizer::adam::cl_beginBatch()");
 		}
 	}
 
@@ -71,7 +65,7 @@ public:
 	{
 		const float scale = learningRate / batchSize;
 		uint32_t size = parameterCount;
-		size_t globalSize = cl::alignSize(size);
+		size_t globalSize = cl::alignSize(size / 4);
 		int error;
 		
 		error = clSetKernelArg(updateKernel, 0, sizeof(cl_mem), &parameters);
@@ -83,7 +77,7 @@ public:
 		
 		if (error != CL_SUCCESS)
 		{
-			throw std::exception("Unexpected error in optimizer::sgd::cl_update()");
+			throw std::exception("Unexpected error in optimizer::adam::cl_update()");
 		}
 	}
 
@@ -93,8 +87,6 @@ private:
 	size_t parameterCount;
 
 	cl_kernel updateKernel;
-
-	cl_kernel initKernel;
 };
 }
 }

@@ -91,39 +91,6 @@ public:
 	{
 		Parabola(true);
 	}
-	void Big(bool cl)
-	{
-		auto makeSimpleNetwork = [=]()
-		{
-			NetworkArgs args;
-			args.setInputShape({ 500 });
-			args.addLayerDense(100);
-			args.addLayerSigmoid();
-			args.addLayerDense(10);
-			args.setLossMse();
-			args.setOptimizerGradientDescent(0.1f);
-			args.enableOpenCLAcceleration(cl);
-			return Network(move(args));
-		};
-
-
-		auto network = makeSimpleNetwork();
-
-		auto inputs = uniformRandomTensor(5000000, -2.f, 2.f).as<2>({ 10000, 500 });
-		auto targets = uniformRandomTensor(100000, -2.f, 2.f).as<2>({ 10000, 10 });
-
-
-		network.train(inputs, targets);
-	}
-	TEST_METHOD(Big)
-	{
-		Big(false);
-	}
-
-	TEST_METHOD(cl_Big)
-	{
-		Big(true);
-	}
 };
 }
 }

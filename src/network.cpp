@@ -7,6 +7,7 @@
 #include "layers\sigmoid.hpp"
 
 #include "optimizers\sgd.hpp"
+#include "optimizers\adam.hpp"
 
 #include "losses\mse.hpp"
 #include <iostream>
@@ -178,6 +179,12 @@ void NetworkArgs::addLayerSigmoid()
 void NetworkArgs::setOptimizerGradientDescent(float learningRate)
 {
 	auto optimizer = std::make_unique<optimizer::Sgd>(learningRate);
+	data->optimizer = move(optimizer);
+}
+
+void NetworkArgs::setOptimizerAdam(float learningRate)
+{
+	auto optimizer = std::make_unique<optimizer::Adam>(learningRate);
 	data->optimizer = move(optimizer);
 }
 

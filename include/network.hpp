@@ -101,9 +101,9 @@ public:
 
     void addLayerLrelu();
 
-    void setOptimizerGradientDescent(float learningRate = 0.01);
+    void setOptimizerGradientDescent(float learningRate = 0.01f);
 
-    void setOptimizerAdam();
+    void setOptimizerAdam(float learningRate = 0.01f);
 
     void setLossMse();
 

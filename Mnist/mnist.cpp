@@ -1,5 +1,5 @@
 #include "..\include\network.hpp"
-#include "mnist_loader.hpp"
+#include "..\include\mnist_loader.hpp"
 #include <iostream>
 #include <chrono>
 
@@ -22,10 +22,6 @@ auto makeNetwork(Shape<> inputShape, size_t outputSize)
 {
 	NetworkArgs args;
 	args.setInputShape(inputShape);
-	args.addLayerDense(64);
-	args.addLayerSigmoid();
-	args.addLayerDense(32);
-	args.addLayerSigmoid();
 	args.addLayerDense(32);
 	args.addLayerSigmoid();
 	args.addLayerDense(outputSize);
@@ -36,7 +32,8 @@ auto makeNetwork(Shape<> inputShape, size_t outputSize)
 	args.enableOpenCLAcceleration(true);
 
 
-	args.setOptimizerGradientDescent(3.0f);
+	//args.setOptimizerGradientDescent(3.0f);
+	args.setOptimizerAdam(0.3f);
 	return Network(move(args));
 }
 
@@ -46,13 +43,16 @@ int main(int argc, char* argv[])
 
 	try
 	{
-		data = loadMnistData();
+		//data = loadMnistData();
+		data = LoadFormattedMnist();
 	}
 	catch (...)
 	{
 		cout << "Could not open mnist files." << endl;
 		return 0;
 	}
+
+	//DumpFormattedMnist(data);
 
 	auto network = makeNetwork(data.trainingData.shape().slice(), 10);
 
@@ -61,8 +61,7 @@ int main(int argc, char* argv[])
 
 	auto start = std::chrono::high_resolution_clock::now();
 
-	network.train(data.trainingData, data.trainingLabels, 8, 20);
-	//network.forward(data.trainingData);
+	network.train(data.trainingData, data.trainingLabels, 1, 1);
 
 	std::chrono::duration<float> elapsed = std::chrono::high_resolution_clock::now() - start;
 	cout << "Done! (" << elapsed.count() << " seconds)" << endl;
